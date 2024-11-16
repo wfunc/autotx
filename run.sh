@@ -3,8 +3,8 @@ set -e
 
 if [ "$1" == "go" ];then
     go build -v .
-    ./fire
+    ./autotx
 else
-    ./build-dart.sh
-    ./build/server/fire
+    ./build-go.sh
+    ./build/server/autotx
 fi
