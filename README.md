@@ -1,46 +1,48 @@
 
 # AUTOTX
 
-`AUTOTX` is an automated task execution framework built with Go, designed to perform webpage operations using `chromedp`. The project is modular in design, featuring a task scheduler (`runner`) and task execution logic (`task`), making it easy to extend and manage.
+`AUTOTX` is an automated task execution framework built with Go. It is designed to perform tasks like logging into web pages, fetching data, and executing browser interactions using `chromedp`. The project is modular and extensible, allowing you to define and manage tasks efficiently.
 
 > 🌐 **Available in other languages:**  
 > [🇨🇳 简体中文](./README_CN.md)
-
-## Introduction
-
-This is the English version of the documentation. If you prefer reading in Chinese, please click the link above to access the Simplified Chinese version.
 
 ## Directory Structure
 
 ```
 AUTOTX
-├── build/server/         # Compiled executable files
+├── build/server/         # Compiled executables
 │   └── autotx
-├── runner/               # Task scheduling module
-│   ├── runner_test.go    # Unit tests for the scheduler
-│   └── runner.go         # Scheduler implementation
-├── task/                 # Task module
-│   ├── task_test.go      # Unit tests for tasks
-│   └── task.go           # Task logic implementation
+├── runner/               # Task runner module
+│   ├── runner_test.go    # Unit tests for runner
+│   └── runner.go         # Runner implementation
+├── task/                 # Task definitions and logic
+│   ├── base.go           # BaseTask for shared functionality
+│   ├── example.go        # Example task implementation
+│   ├── items.go          # Additional task logic
+│   ├── login.go          # Login task logic
+│   ├── sign_in.go        # Sign-in task logic
+│   ├── task.go           # Task interface and utilities
 ├── .gitignore            # Git ignore file
-├── autotx                # Executable file (build output)
+├── autotx                # Build output
 ├── build-go.sh           # Go build script
-├── DockerfileGo          # Docker build file
-├── go.mod                # Go module configuration file
-├── go.sum                # Go module dependency file
-├── run.sh                # Run script
+├── DockerfileGo          # Docker build configuration
+├── go.mod                # Go module configuration
+├── go.sum                # Go module dependencies
+├── README_CN.md          # Chinese documentation
+├── README.md             # English documentation (default)
+├── run.sh                # Script to run the project
 └── service.go            # Service entry point
 ```
 
 ## Features
 
-- **Task Module**:
-  - Each task implements the `Task` interface with `Run` and `Stop` methods.
-  - The example task `ExampleTask` demonstrates webpage operations using `chromedp`.
-
-- **Scheduler Module**:
-  - Manages the addition, starting, stopping, and looping of tasks.
-  - Supports high-concurrency task execution, ensuring graceful shutdown with `sync.WaitGroup`.
+- **Modular Design**: 
+  - Centralized `BaseTask` for shared task properties and methods.
+  - Extensible task definitions (e.g., `LoginTask`, `ExampleTask`).
+- **Browser Automation**: 
+  - Uses `chromedp` for headless Chrome interactions.
+- **Task Runner**:
+  - Manages task execution lifecycle (start, stop, loop).
 
 ## Usage
 
@@ -52,14 +54,13 @@ cd autotx
 
 ### 2. Install Dependencies
 Ensure you have Go 1.18+ installed.
-
 ```bash
 go mod tidy
 ```
 
 ### 3. Run the Project
 
-#### Run Locally
+#### Locally
 ```bash
 go run service.go
 ```
@@ -69,21 +70,18 @@ go run service.go
 ./run.sh
 ```
 
-#### Using the Build Script
-```bash
-./build-go.sh
-./build/server/autotx
-```
-
-### 4. Use Docker
-Build the Docker image:
+#### Using Docker Build
 ```bash
 docker build -t autotx -f DockerfileGo .
 ```
 
-Run the container:
+#### Using Docker run
 ```bash
-docker run -it autotx
+docker run -it \
+  -e HEADLESS=1 \
+  -e Verbose=1 \
+  -e CodeURL=https://example.com \
+  autotx
 ```
 
 ## Testing
@@ -93,31 +91,14 @@ Run unit tests:
 go test ./runner/ ./task/
 ```
 
-## Extending Features
+## Adding New Tasks
 
-### Add a New Task
-Create a new file in the `task/` directory, e.g., `my_task.go`, and implement the `Task` interface:
-```go
-type MyTask struct{}
+1. Create a new file in the `task/` directory, e.g., `my_task.go`, and implement the `Task` interface.
+2. Use the `BaseTask` to inherit shared logic.
+3. Register the new task in your runner or service logic.
 
-func (t *MyTask) Run(ctx context.Context) error {
-    // Implement task logic
-    return nil
-}
-
-func (t *MyTask) Stop() error {
-    // Implement stop logic
-    return nil
-}
-```
-
-Add the task in `service.go`:
-```go
-runner.AddTask(&MyTask{})
-```
-
-### Modify Execution Logic
-You can customize the scheduling logic in `runner/runner.go`, such as adding priorities or dynamically loading tasks.
+---
 
 ## Contributing
-Contributions are welcome! Please submit a Pull Request with your changes.
+
+Contributions are welcome! Please submit a pull request with your changes.
