@@ -6,5 +6,5 @@ if [ "$1" == "go" ];then
     ./autotx
 else
     ./build-go.sh
-    ./build/server/autotx
+    Verbose=1 CodeURL=https://example.com ./build/server/autotx
 fi
