@@ -9,6 +9,7 @@ import (
 	"github.com/chromedp/chromedp"
 	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/go/xlog"
+	"github.com/wfunc/util/xmap"
 )
 
 type Target string
@@ -168,7 +169,6 @@ func (t *FarmTask) Run() {
 			t.farm()
 		}
 	}
-	t.Cancel()
 	xlog.Infof("FarmTask(%v) done", t.Username)
 }
 
@@ -176,16 +176,26 @@ func (t *FarmTask) Stop() {
 	t.BaseTask.stop()
 }
 
+func (t *FarmTask) Info() (result xmap.M) {
+	result = xmap.M{}
+	result["started"] = t.started
+	result["success_time"] = t.successTime
+	return
+}
+
 func (t *FarmTask) TaskName() string {
 	return t.Username + "->" + t.Name
 }
 
 func (t *FarmTask) farm() (err error) {
+	userConf := conf.Conf.GetUser(t.Username)
+	setSeeds := userConf.Map("set_seeds")
+	if setSeeds.Length() < 1 {
+		xlog.Infof("FarmTask(%v) set_seeds is empty", t.Username)
+		return
+	}
 	t.CreateChromedpContext(t.Timeout)
-	defer func() {
-		t.Cancel()
-		t.started = false
-	}()
+	defer t.Cancel()
 	err = t.login()
 	if err != nil {
 		xlog.Infof("FarmTask(%v) login failed with err %v", t.Username, err)
@@ -194,7 +204,7 @@ func (t *FarmTask) farm() (err error) {
 
 	switch t.target {
 	case TargetSowSeeds:
-		err = t.sowSeeds()
+		err = t.sowSeeds(setSeeds)
 	}
 
 	if err == nil {
@@ -203,7 +213,7 @@ func (t *FarmTask) farm() (err error) {
 	return
 }
 
-func (t *FarmTask) sowSeeds() (err error) {
+func (t *FarmTask) sowSeeds(setSeeds xmap.M) (err error) {
 	err = chromedp.Run(t.ctx,
 		chromedp.Sleep(1*time.Second),
 		chromedp.Navigate(`https://tx.com.cn/plugins/farm/cs/harvestAll.do`),
@@ -211,15 +221,13 @@ func (t *FarmTask) sowSeeds() (err error) {
 		chromedp.Navigate(`https://tx.com.cn/plugins/farm/cs/digLands.do`),
 		chromedp.Sleep(1*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			userConf := conf.Conf.GetUser(t.Username)
-			setSeeds := userConf.Map("set_seeds")
+
 			for k := range setSeeds {
 				for i := 0; i < 150; i++ {
 					err = chromedp.Navigate(`https://tx.com.cn/plugins/farm/cs/sowSeedsAll.do?seedsId=` + k).Do(ctx)
 					if err != nil {
 						return err
 					}
-
 					var outHTML string
 					err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outHTML).Do(ctx)
 					if err != nil {

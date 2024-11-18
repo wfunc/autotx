@@ -9,6 +9,7 @@ import (
 	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/autotx/task"
 	"github.com/wfunc/go/xlog"
+	"github.com/wfunc/util/xmap"
 )
 
 var RunnerShared *Runner
@@ -88,6 +89,16 @@ func (r *Runner) StopTask(username string) {
 
 func (r *Runner) Loop() {
 	// TODO
+}
+
+func (r *Runner) ListTask() (result xmap.M) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	result = xmap.M{}
+	for _, task := range r.tasks {
+		result[task.TaskName()] = task.Info()
+	}
+	return
 }
 
 func (r *Runner) AddTask(task task.Task) {

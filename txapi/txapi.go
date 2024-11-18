@@ -11,4 +11,7 @@ func Handle(router *gin.Engine) {
 	user.GET("/add", AddUserHandler)
 	user.GET("/remove", RemoveUserHandler)
 	user.GET("/reload", ReloadUserHandler)
+
+	task := api.Group("/task")
+	task.GET("/list", ListTasksHandler)
 }

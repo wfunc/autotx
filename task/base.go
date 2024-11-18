@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/chromedp/chromedp"
+	"github.com/wfunc/go/xlog"
 )
 
 // BaseTask 包含公共的任务配置和行为
@@ -52,6 +53,7 @@ func NewBaseTaskWithUserInfo(username, password string) *BaseTask {
 
 func (b *BaseTask) CreateChromedpContext(timeout time.Duration) {
 	if b.started {
+		xlog.Infof("BaseTask(%v) already started", b.Username)
 		return
 	}
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
@@ -65,7 +67,7 @@ func (b *BaseTask) CreateChromedpContext(timeout time.Duration) {
 	if b.Headless {
 		opts = append(opts, chromedp.DisableGPU)
 	}
-	allocCtx, cancel := chromedp.NewExecAllocator(b.ctx, opts...)
+	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	taskCtx, cancelCtx := chromedp.NewContext(allocCtx)
 	// taskCtx, cancelTimeout := context.WithTimeout(taskCtx, timeout) // timeout
 	b.ctx = taskCtx

@@ -6,6 +6,7 @@ import (
 
 	"github.com/chromedp/chromedp"
 	"github.com/wfunc/go/xlog"
+	"github.com/wfunc/util/xmap"
 )
 
 type ExampleTask struct {
@@ -49,11 +50,13 @@ func (t *ExampleTask) Run() {
 	if t.DoneAfter > 0 {
 		time.Sleep(t.DoneAfter)
 	}
-	return
 }
 
 func (t *ExampleTask) Stop() {
 	t.BaseTask.stop()
+}
+func (t *ExampleTask) Info() (result xmap.M) {
+	return
 }
 
 func (t *ExampleTask) TaskName() string {

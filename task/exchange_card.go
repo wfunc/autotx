@@ -8,6 +8,7 @@ import (
 
 	"github.com/chromedp/chromedp"
 	"github.com/wfunc/go/xlog"
+	"github.com/wfunc/util/xmap"
 )
 
 type ExchangeCardTask struct {
@@ -37,12 +38,18 @@ func (t *ExchangeCardTask) Run() {
 			t.exchange()
 		}
 	}
-	t.Cancel()
 	xlog.Infof("ExchangeCardTask(%v) done", t.Username)
 }
 
 func (t *ExchangeCardTask) Stop() {
 	t.BaseTask.stop()
+}
+
+func (t *ExchangeCardTask) Info() (result xmap.M) {
+	result = xmap.M{}
+	result["started"] = t.started
+	result["success_time"] = t.successTime
+	return
 }
 
 func (t *ExchangeCardTask) TaskName() string {
@@ -58,10 +65,7 @@ func (t *ExchangeCardTask) exchange() (err error) {
 		return
 	}
 	t.CreateChromedpContext(t.Timeout)
-	defer func() {
-		t.Cancel()
-		t.started = false
-	}()
+	defer t.Cancel()
 	// login
 	err = t.login()
 	if err != nil {

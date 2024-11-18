@@ -7,14 +7,15 @@ import (
 
 	"github.com/chromedp/chromedp"
 	"github.com/wfunc/go/xlog"
+	"github.com/wfunc/util/xmap"
 )
 
 type SignInTask struct {
 	*BaseTask
-	Name      string
-	DoneAfter time.Duration
-	nextAfter time.Time
-	signTime  time.Time
+	Name        string
+	DoneAfter   time.Duration
+	nextAfter   time.Time
+	successTime time.Time
 }
 
 func NewSignInTask(username, password string) *SignInTask {
@@ -39,7 +40,6 @@ func (t *SignInTask) Run() {
 			t.sign()
 		}
 	}
-	t.Cancel()
 	xlog.Infof("SignInTask(%v) done", t.Username)
 }
 
@@ -47,27 +47,31 @@ func (t *SignInTask) Stop() {
 	t.BaseTask.stop()
 }
 
+func (t *SignInTask) Info() (result xmap.M) {
+	result = xmap.M{}
+	result["started"] = t.started
+	result["success_time"] = t.successTime
+	return
+}
+
 func (t *SignInTask) TaskName() string {
 	return t.Username + "->" + t.Name
 }
 
 func (t *SignInTask) clear() {
-	t.signTime = time.Time{}
+	t.successTime = time.Time{}
 }
 
 func (t *SignInTask) sign() (err error) {
 	now := time.Now()
-	if t.signTime.Year() == now.Year() && t.signTime.Month() == now.Month() && t.signTime.Day() == now.Day() {
+	if t.successTime.Year() == now.Year() && t.successTime.Month() == now.Month() && t.successTime.Day() == now.Day() {
 		if t.Verbose {
 			xlog.Infof("SignInTask(%v) sign skipped", t.Username)
 		}
 		return
 	}
 	t.CreateChromedpContext(t.Timeout)
-	defer func() {
-		t.Cancel()
-		t.started = false
-	}()
+	defer t.Cancel()
 	// login
 	err = t.login()
 	if err != nil {
@@ -151,7 +155,7 @@ func (t *SignInTask) sign() (err error) {
 		chromedp.Navigate(`https://tx.com.cn/in/logout.do`),
 	)
 	if err == nil {
-		t.signTime = now
+		t.successTime = now
 		xlog.Infof("SignInTask(%v) sign success", t.Username)
 	}
 	return
