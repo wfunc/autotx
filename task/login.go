@@ -2,12 +2,12 @@ package task
 
 import (
 	"context"
-	"log"
 	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/chromedp/chromedp"
+	"github.com/wfunc/go/xlog"
 	"github.com/wfunc/util/xhttp"
 )
 
@@ -17,11 +17,11 @@ func (b *BaseTask) login() (err error) {
 		mobileSubmit("https://tx.com.cn/in/cs/login.do?type=passwd", `//input[@name="useruid"]`, b.Username, `//input[@name="password"]`, b.Password, &res),
 	)
 	if err != nil {
-		log.Printf("Login(%v) failed with err %v", b.Username, err)
+		xlog.Infof("Login(%v) failed with err %v", b.Username, err)
 		return
 	}
 	if strings.Contains(res, "继续访问空间") {
-		log.Printf("Login(%v) success", b.Username)
+		xlog.Infof("Login(%v) success", b.Username)
 		return nil
 	}
 	return
@@ -40,7 +40,7 @@ func mobileSubmit(urlstr, sel, q, sel2, q2 string, res *string) chromedp.Tasks {
 			time.Sleep(1 * time.Second)
 			err := chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > div.tip3`, res).Do(ctx)
 			if err != nil {
-				log.Printf("mobileSubmit(%s) failed with err %v", q, err)
+				xlog.Infof("mobileSubmit(%s) failed with err %v", q, err)
 				return err
 			}
 			if strings.Contains(*res, "继续访问空间") {
@@ -81,7 +81,7 @@ func getCodeLogic(url string) string {
 		cmd := exec.Command("python3", args...)
 		cmdData, err := cmd.CombinedOutput()
 		if err != nil {
-			log.Printf("python err is %v", err)
+			xlog.Infof("python err is %v", err)
 			return ""
 		}
 		return string(cmdData)

@@ -2,10 +2,10 @@ package task
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/chromedp/chromedp"
+	"github.com/wfunc/go/xlog"
 )
 
 type ExampleTask struct {
@@ -24,7 +24,7 @@ func NewExampleTask(name string) *ExampleTask {
 }
 
 func (t *ExampleTask) Run() {
-	log.Printf("Task %s started", t.Name)
+	xlog.Infof("Task %s started", t.Name)
 
 	// 创建 Chrome 执行上下文
 	t.CreateChromedpContext(30 * time.Second)
@@ -38,10 +38,10 @@ func (t *ExampleTask) Run() {
 			chromedp.Title(&title),
 		)
 		if err != nil {
-			log.Printf("Task %s error: %v", t.Name, err)
+			xlog.Infof("Task %s error: %v", t.Name, err)
 			return
 		}
-		log.Printf("Page title: %s", title)
+		xlog.Infof("Page title: %s", title)
 		time.Sleep(1 * time.Second)
 	}
 

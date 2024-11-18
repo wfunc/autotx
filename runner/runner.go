@@ -8,6 +8,7 @@ import (
 
 	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/autotx/task"
+	"github.com/wfunc/go/xlog"
 )
 
 var RunnerShared *Runner
@@ -79,7 +80,7 @@ func (r *Runner) AddTask(task task.Task) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	if r.tasks[task.TaskName()] != nil {
-		log.Printf("Runner already added task with task %v", task.TaskName())
+		xlog.Infof("Runner already added task with task %v", task.TaskName())
 		return
 	}
 	r.wg.Add(1)
@@ -88,7 +89,7 @@ func (r *Runner) AddTask(task task.Task) {
 		task.Run()
 	}()
 	r.tasks[task.TaskName()] = task
-	log.Printf("Runner added task success with tasks %v", len(r.tasks))
+	xlog.Infof("Runner added task success with tasks %v", len(r.tasks))
 }
 
 func (r *Runner) Stop() int {

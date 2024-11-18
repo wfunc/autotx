@@ -1,6 +1,8 @@
 package txapi
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/autotx/runner"
@@ -17,7 +19,7 @@ func Handle(router *gin.Engine) {
 
 func UsersHandler(c *gin.Context) {
 	users := conf.Conf.GetUsers()
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"message": "Users",
 		"users":   users,
 	})
@@ -27,14 +29,14 @@ func AddUserHandler(c *gin.Context) {
 	username := c.Query("username")
 	password := c.Query("password")
 	if username == "" || password == "" {
-		c.JSON(400, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Bad Request or Empty",
 		})
 		return
 	}
 	conf.Conf.AddUser(username, password)
 	runner.RunnerShared.Reload(username)
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"message": "Added",
 	})
 }
@@ -42,14 +44,14 @@ func AddUserHandler(c *gin.Context) {
 func RemoveUserHandler(c *gin.Context) {
 	username := c.Query("username")
 	if username == "" {
-		c.JSON(400, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Bad Request or Empty",
 		})
 		return
 	}
 	conf.Conf.RemoveUser(username)
 	runner.RunnerShared.StopTask(username)
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"message": "Removed",
 	})
 }
@@ -66,7 +68,7 @@ func ReloadUserHandler(c *gin.Context) {
 			runner.RunnerShared.Reload(username)
 		}
 	}
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"message": "Reloaded",
 	})
 }
