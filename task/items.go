@@ -84,6 +84,9 @@ func ParseShopHTML(outerHTML string, shopMap map[string]string) error {
 		// Context-sensitive logic based on the last node's data
 		if lastNodeData == "img" {
 			currentKey = "🌹" + node.Data
+			if strings.Contains(node.Data, ":") && strings.Contains(node.Data, "级") && !strings.Contains(node.Data, "等级:") {
+				currentKey = "🪴" + node.Data
+			}
 		} else if strings.Contains(node.Data, ":") && strings.Contains(node.Data, "级") && !strings.Contains(node.Data, "等级:") {
 			currentKey = "🪴" + node.Data
 		} else if strings.Contains(node.Data, "单价:") {

@@ -37,7 +37,6 @@ func NewFarmTask(target Target, username, password string) *FarmTask {
 }
 
 func (t *FarmTask) QueryShop() (shopM map[string]string, err error) {
-	t.CreateChromedpContext(t.Timeout)
 	t.login()
 	shopM = map[string]string{}
 	err = chromedp.Run(t.ctx,
@@ -113,9 +112,50 @@ func (t *FarmTask) QueryShop() (shopM map[string]string, err error) {
 	return
 }
 
+func (t *FarmTask) PaySeeds() (shopM map[string]string, err error) {
+	shopM = map[string]string{}
+	err = chromedp.Run(t.ctx,
+		chromedp.Sleep(1*time.Second),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			// for i := 0; i < 4; i++ {
+			chromedp.Navigate(`https://tx.com.cn/plugins/farm/cs/paySeeds.do`).Do(ctx)
+			var outerHTML string
+			err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
+			if err == nil {
+				ParseShopHTML(outerHTML, shopM)
+				var textContent, href string
+				for {
+					err = chromedp.Evaluate(`document.querySelector('body > div.mainareaOutside_pc > div.mainareaCenter_pc > div:nth-child(14) > a').textContent`, &textContent).Do(ctx)
+					if err != nil {
+						break
+					}
+					err = chromedp.Evaluate(`document.querySelector('body > div.mainareaOutside_pc > div.mainareaCenter_pc > div:nth-child(14) > a').href`, &href).Do(ctx)
+					if err != nil {
+						break
+					}
+					// xlog.Infof("textContent is %v, href is %v", textContent, href)
+
+					if textContent != ">>下页" {
+						break
+					}
+					chromedp.Navigate(href).Do(ctx)
+					err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
+					if err == nil {
+						ParseShopHTML(outerHTML, shopM)
+					}
+				}
+			}
+
+			// }
+			return nil
+		}),
+	)
+	// xlog.Infof("shops is %v", converter.JSON(shopM))
+	return
+}
+
 func (t *FarmTask) Run() {
 	xlog.Infof("FarmTask(%v) started", t.Username)
-	t.CreateChromedpContext(t.Timeout)
 	t.farm()
 	ticker := time.NewTicker(t.TickerDelay)
 	defer ticker.Stop()
@@ -141,14 +181,11 @@ func (t *FarmTask) TaskName() string {
 }
 
 func (t *FarmTask) farm() (err error) {
-	// now := time.Now()
-	// if t.successTime.Year() == now.Year() && t.successTime.Month() == now.Month() && t.successTime.Day() == now.Day() {
-	// 	if t.Verbose {
-	// 		xlog.Infof("FarmTask(%v) sign skipped", t.Username)
-	// 	}
-	// 	return
-	// }
-	// login
+	t.CreateChromedpContext(t.Timeout)
+	defer func() {
+		t.Cancel()
+		t.started = false
+	}()
 	err = t.login()
 	if err != nil {
 		xlog.Infof("FarmTask(%v) login failed with err %v", t.Username, err)

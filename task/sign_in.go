@@ -26,7 +26,7 @@ func NewSignInTask(username, password string) *SignInTask {
 func (t *SignInTask) Run() {
 	t.clear()
 	xlog.Infof("SignInTask(%v) started", t.Username)
-	t.CreateChromedpContext(t.Timeout)
+
 	t.sign()
 	ticker := time.NewTicker(t.TickerDelay)
 	defer ticker.Stop()
@@ -63,6 +63,11 @@ func (t *SignInTask) sign() (err error) {
 		}
 		return
 	}
+	t.CreateChromedpContext(t.Timeout)
+	defer func() {
+		t.Cancel()
+		t.started = false
+	}()
 	// login
 	err = t.login()
 	if err != nil {

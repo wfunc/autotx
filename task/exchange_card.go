@@ -25,7 +25,6 @@ func NewExchangeCardTask(username, password string) *ExchangeCardTask {
 
 func (t *ExchangeCardTask) Run() {
 	xlog.Infof("ExchangeCardTask(%v) started", t.Username)
-	t.CreateChromedpContext(t.Timeout)
 	t.exchange()
 	ticker := time.NewTicker(t.TickerDelay)
 	defer ticker.Stop()
@@ -58,6 +57,11 @@ func (t *ExchangeCardTask) exchange() (err error) {
 		}
 		return
 	}
+	t.CreateChromedpContext(t.Timeout)
+	defer func() {
+		t.Cancel()
+		t.started = false
+	}()
 	// login
 	err = t.login()
 	if err != nil {

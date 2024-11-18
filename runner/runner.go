@@ -55,11 +55,15 @@ func (r *Runner) All() {
 		if seed {
 			farmTask := task.NewFarmTask(task.TargetQuerySeeds, username, password)
 			farmTask.Verbose = os.Getenv("Verbose") == "1"
+			farmTask.CreateChromedpContext(farmTask.Timeout)
 			seedM, _ := farmTask.QueryShop()
 			conf.Conf.SetSeeds(seedM)
 			if len(seedM) > 0 {
 				seed = false
 			}
+			seedM, _ = farmTask.PaySeeds()
+			conf.Conf.SetSeeds(seedM)
+			farmTask.Cancel()
 		}
 		r.StartTask(username, password)
 	}
@@ -115,15 +119,15 @@ func (r *Runner) Stop() int {
 }
 
 func (r *Runner) StartTask(username, password string) {
-	// // sign
-	// signTask := task.NewSignInTask(username, password)
-	// signTask.Verbose = os.Getenv("Verbose") == "1"
-	// r.AddTask(signTask)
+	// sign
+	signTask := task.NewSignInTask(username, password)
+	signTask.Verbose = os.Getenv("Verbose") == "1"
+	r.AddTask(signTask)
 
-	// // exchange card
-	// exchangeCardTask := task.NewExchangeCardTask(username, password)
-	// exchangeCardTask.Verbose = os.Getenv("Verbose") == "1"
-	// r.AddTask(exchangeCardTask)
+	// exchange card
+	exchangeCardTask := task.NewExchangeCardTask(username, password)
+	exchangeCardTask.Verbose = os.Getenv("Verbose") == "1"
+	r.AddTask(exchangeCardTask)
 
 	// sow seeds
 	sowSeeds := task.NewFarmTask(task.TargetSowSeeds, username, password)
