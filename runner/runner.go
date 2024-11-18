@@ -50,18 +50,14 @@ func (r *Runner) All() {
 	}
 	for username, userConf := range users {
 		password := userConf.Str("password")
-		signTask := task.NewSignInTask(username, password)
-		signTask.Verbose = os.Getenv("Verbose") == "1"
-		r.AddTask(signTask)
+		r.StartTask(username, password)
 	}
 }
 
 func (r *Runner) Reload(username string) {
 	userConf := conf.Conf.GetUser(username)
 	password := userConf.Str("password")
-	signTask := task.NewSignInTask(username, password)
-	signTask.Verbose = os.Getenv("Verbose") == "1"
-	r.AddTask(signTask)
+	r.StartTask(username, password)
 }
 
 func (r *Runner) StopTask(username string) {
@@ -105,4 +101,17 @@ func (r *Runner) Stop() int {
 	r.wg.Wait()
 	r.tasks = make(map[string]task.Task)
 	return all
+}
+
+func (r *Runner) StartTask(username, password string) {
+	// sign
+	signTask := task.NewSignInTask(username, password)
+	signTask.Verbose = os.Getenv("Verbose") == "1"
+	r.AddTask(signTask)
+
+	// exchange card
+	exchangeCardTask := task.NewExchangeCardTask(username, password)
+	exchangeCardTask.Verbose = os.Getenv("Verbose") == "1"
+	r.AddTask(exchangeCardTask)
+
 }
