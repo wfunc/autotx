@@ -3,8 +3,10 @@ package runner
 import (
 	"log"
 	"os"
+	"strings"
 	"sync"
 
+	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/autotx/task"
 )
 
@@ -42,9 +44,35 @@ func NewRunner() *Runner {
 }
 
 func (r *Runner) All() {
-	signTask := task.NewSignInTask("37161619", "Aa112211")
+	users := conf.Conf.GetUsers()
+	if len(users) < 1 {
+		return
+	}
+	for username, userConf := range users {
+		password := userConf.Str("password")
+		signTask := task.NewSignInTask(username, password)
+		signTask.Verbose = os.Getenv("Verbose") == "1"
+		r.AddTask(signTask)
+	}
+}
+
+func (r *Runner) Reload(username string) {
+	userConf := conf.Conf.GetUser(username)
+	password := userConf.Str("password")
+	signTask := task.NewSignInTask(username, password)
 	signTask.Verbose = os.Getenv("Verbose") == "1"
 	r.AddTask(signTask)
+}
+
+func (r *Runner) StopTask(username string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	for _, task := range r.tasks {
+		if strings.Contains(task.TaskName(), username) {
+			task.Stop()
+			delete(r.tasks, task.TaskName())
+		}
+	}
 }
 
 func (r *Runner) Loop() {
