@@ -41,7 +41,6 @@ func (t *SignInTask) Run() {
 	}
 	t.Cancel()
 	log.Printf("SignInTask(%v) done", t.Username)
-	return
 }
 
 func (t *SignInTask) Stop() {
