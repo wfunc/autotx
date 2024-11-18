@@ -12,6 +12,7 @@ func Handle(router *gin.Engine) {
 	user.GET("/list", UsersHandler)
 	user.GET("/add", AddUserHandler)
 	user.GET("/remove", RemoveUserHandler)
+	user.GET("/reload", ReloadUserHandler)
 }
 
 func UsersHandler(c *gin.Context) {
@@ -50,5 +51,22 @@ func RemoveUserHandler(c *gin.Context) {
 	runner.RunnerShared.StopTask(username)
 	c.JSON(200, gin.H{
 		"message": "Removed",
+	})
+}
+
+func ReloadUserHandler(c *gin.Context) {
+	username := c.Query("username")
+	if len(username) > 0 {
+		runner.RunnerShared.StopTask(username)
+		runner.RunnerShared.Reload(username)
+	} else {
+		users := conf.Conf.GetUsers()
+		for username := range users {
+			runner.RunnerShared.StopTask(username)
+			runner.RunnerShared.Reload(username)
+		}
+	}
+	c.JSON(200, gin.H{
+		"message": "Reloaded",
 	})
 }
