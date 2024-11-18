@@ -56,10 +56,30 @@ func (b *BaseTask) CreateChromedpContext(timeout time.Duration) {
 		xlog.Infof("BaseTask(%v) already started", b.Username)
 		return
 	}
+	// opts := append(chromedp.DefaultExecAllocatorOptions[:],
+	// 	chromedp.Flag("headless", b.Headless),
+	// 	chromedp.Flag("window-size", "400,745"),
+	// 	chromedp.UserAgent(b.UserAgent),
+	// )
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", b.Headless),
-		chromedp.Flag("window-size", "400,745"),
-		chromedp.UserAgent(b.UserAgent),
+		chromedp.Flag("headless", b.Headless),                      // 必须运行在无头模式
+		chromedp.Flag("disable-gpu", true),                         // 禁用 GPU，加速无头模式
+		chromedp.Flag("no-sandbox", true),                          // 禁用沙箱，降低资源占用
+		chromedp.Flag("disable-extensions", true),                  // 禁用扩展
+		chromedp.Flag("disable-default-apps", true),                // 禁用默认应用
+		chromedp.Flag("disable-dev-shm-usage", true),               // 禁用 /dev/shm 共享内存限制
+		chromedp.Flag("disable-setuid-sandbox", true),              // 禁用 setuid 沙箱
+		chromedp.Flag("disable-infobars", true),                    // 禁用信息栏
+		chromedp.Flag("disable-popup-blocking", true),              // 禁用弹窗拦截
+		chromedp.Flag("disable-translate", true),                   // 禁用翻译功能
+		chromedp.Flag("disable-background-timer-throttling", true), // 禁用后台计时器限制
+		chromedp.Flag("disable-renderer-backgrounding", true),      // 禁用后台渲染
+		chromedp.Flag("disable-background-networking", true),       // 禁用后台网络请求
+		chromedp.Flag("disable-sync", true),                        // 禁用同步
+		chromedp.Flag("mute-audio", true),                          // 禁用音频
+		// chromedp.Flag("remote-debugging-port", "9222"),             // 开启远程调试端口（可选）
+		chromedp.Flag("window-size", "400,745"), // 设置窗口大小
+		chromedp.UserAgent(b.UserAgent),         // 设置用户代理
 	)
 	if len(b.Proxy) > 0 {
 		opts = append(opts, chromedp.ProxyServer(b.Proxy), chromedp.Flag("proxy-bypass-list", "<-loopback>"))
