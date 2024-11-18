@@ -14,12 +14,12 @@ type SignInTask struct {
 	*BaseTask
 	Name        string
 	DoneAfter   time.Duration
-	nextAfter   time.Time
 	successTime time.Time
 }
 
 func NewSignInTask(username, password string) *SignInTask {
 	base := NewBaseTaskWithUserInfo(username, password)
+	base.Timeout = 5 * time.Minute
 	t := &SignInTask{Name: "sign-in", BaseTask: base}
 	return t
 }

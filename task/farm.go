@@ -33,6 +33,7 @@ func NewFarmTask(target Target, username, password string) *FarmTask {
 	case TargetSowSeeds:
 		base.TickerDelay = 60 * time.Second
 	}
+	base.Timeout = 10 * time.Minute
 	t := &FarmTask{Name: "farm-" + string(target), BaseTask: base, target: target}
 	return t
 }

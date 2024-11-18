@@ -69,10 +69,10 @@ func (b *BaseTask) CreateChromedpContext(timeout time.Duration) {
 	}
 	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	taskCtx, cancelCtx := chromedp.NewContext(allocCtx)
-	// taskCtx, cancelTimeout := context.WithTimeout(taskCtx, timeout) // timeout
-	b.ctx = taskCtx
+	withTimeoutCtx, cancelTimeout := context.WithTimeout(taskCtx, timeout) // timeout
+	b.ctx = withTimeoutCtx
 	b.Cancel = func() {
-		// cancelTimeout()
+		cancelTimeout()
 		cancelCtx()
 		cancel()
 		b.started = false
