@@ -49,8 +49,18 @@ func (r *Runner) All() {
 	if len(users) < 1 {
 		return
 	}
+	seed := len(conf.Conf.GetSeedsRevert()["1"]) < 1
 	for username, userConf := range users {
 		password := userConf.Str("password")
+		if seed {
+			farmTask := task.NewFarmTask(task.TargetQuerySeeds, username, password)
+			farmTask.Verbose = os.Getenv("Verbose") == "1"
+			seedM, _ := farmTask.QueryShop()
+			conf.Conf.SetSeeds(seedM)
+			if len(seedM) > 0 {
+				seed = false
+			}
+		}
 		r.StartTask(username, password)
 	}
 }
@@ -105,14 +115,19 @@ func (r *Runner) Stop() int {
 }
 
 func (r *Runner) StartTask(username, password string) {
-	// sign
-	signTask := task.NewSignInTask(username, password)
-	signTask.Verbose = os.Getenv("Verbose") == "1"
-	r.AddTask(signTask)
+	// // sign
+	// signTask := task.NewSignInTask(username, password)
+	// signTask.Verbose = os.Getenv("Verbose") == "1"
+	// r.AddTask(signTask)
 
-	// exchange card
-	exchangeCardTask := task.NewExchangeCardTask(username, password)
-	exchangeCardTask.Verbose = os.Getenv("Verbose") == "1"
-	r.AddTask(exchangeCardTask)
+	// // exchange card
+	// exchangeCardTask := task.NewExchangeCardTask(username, password)
+	// exchangeCardTask.Verbose = os.Getenv("Verbose") == "1"
+	// r.AddTask(exchangeCardTask)
+
+	// sow seeds
+	sowSeeds := task.NewFarmTask(task.TargetSowSeeds, username, password)
+	sowSeeds.Verbose = os.Getenv("Verbose") == "1"
+	r.AddTask(sowSeeds)
 
 }
