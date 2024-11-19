@@ -39,6 +39,9 @@ func (t *ExchangeCardTask) Run() {
 			t.exchange()
 		}
 	}
+	if t.Cancel != nil {
+		t.Cancel()
+	}
 	xlog.Infof("ExchangeCardTask(%v) done", t.Username)
 }
 
@@ -47,8 +50,7 @@ func (t *ExchangeCardTask) Stop() {
 }
 
 func (t *ExchangeCardTask) Info() (result xmap.M) {
-	result = xmap.M{}
-	result["started"] = t.started
+	result = t.BaseInfo()
 	result["success_time"] = t.successTime
 	return
 }

@@ -40,7 +40,10 @@ func (t *SignInTask) Run() {
 			t.sign()
 		}
 	}
-	xlog.Infof("SignInTask(%v) done", t.Username)
+	if t.Cancel != nil {
+		t.Cancel()
+	}
+	xlog.Infof("SignInTask(%v) done with %v", t.Username, t.Cancel)
 }
 
 func (t *SignInTask) Stop() {
@@ -48,8 +51,7 @@ func (t *SignInTask) Stop() {
 }
 
 func (t *SignInTask) Info() (result xmap.M) {
-	result = xmap.M{}
-	result["started"] = t.started
+	result = t.BaseInfo()
 	result["success_time"] = t.successTime
 	return
 }

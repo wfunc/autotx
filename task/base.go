@@ -2,10 +2,12 @@ package task
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/chromedp/chromedp"
 	"github.com/wfunc/go/xlog"
+	"github.com/wfunc/util/xmap"
 )
 
 // BaseTask 包含公共的任务配置和行为
@@ -22,6 +24,7 @@ type BaseTask struct {
 	TickerDelay time.Duration
 	exiter      chan int
 	Verbose     bool
+	lock        sync.RWMutex
 }
 
 func NewBaseTask(ctx context.Context) *BaseTask {
@@ -31,7 +34,8 @@ func NewBaseTask(ctx context.Context) *BaseTask {
 		UserAgent:   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
 		Timeout:     30 * time.Second,
 		TickerDelay: 5 * time.Second,
-		exiter:      make(chan int, 2),
+		exiter:      make(chan int, 3),
+		lock:        sync.RWMutex{},
 	}
 }
 
@@ -52,6 +56,8 @@ func NewBaseTaskWithUserInfo(username, password string) *BaseTask {
 }
 
 func (b *BaseTask) CreateChromedpContext(timeout time.Duration) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
 	if b.started {
 		xlog.Infof("BaseTask(%v) already started", b.Username)
 		return
@@ -66,6 +72,7 @@ func (b *BaseTask) CreateChromedpContext(timeout time.Duration) {
 		chromedp.Flag("disable-gpu", true),                         // 禁用 GPU，加速无头模式
 		chromedp.Flag("no-sandbox", true),                          // 禁用沙箱，降低资源占用
 		chromedp.Flag("disable-extensions", true),                  // 禁用扩展
+		chromedp.Flag("disable-images", true),                      // 禁用图片加载
 		chromedp.Flag("disable-default-apps", true),                // 禁用默认应用
 		chromedp.Flag("disable-dev-shm-usage", true),               // 禁用 /dev/shm 共享内存限制
 		chromedp.Flag("disable-setuid-sandbox", true),              // 禁用 setuid 沙箱
@@ -95,12 +102,22 @@ func (b *BaseTask) CreateChromedpContext(timeout time.Duration) {
 		cancelTimeout()
 		cancelCtx()
 		cancel()
+		b.lock.Lock()
 		b.started = false
+		b.Cancel = nil
+		b.lock.Unlock()
 	}
 	b.started = true
 }
 
 func (b *BaseTask) stop() {
 	b.exiter <- 0
-	b.started = false
+}
+
+func (b *BaseTask) BaseInfo() xmap.M {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	result := xmap.M{}
+	result["started"] = b.started
+	return result
 }

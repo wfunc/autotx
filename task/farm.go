@@ -170,6 +170,9 @@ func (t *FarmTask) Run() {
 			t.farm()
 		}
 	}
+	if t.Cancel != nil {
+		t.Cancel()
+	}
 	xlog.Infof("FarmTask(%v) done", t.Username)
 }
 
@@ -178,8 +181,7 @@ func (t *FarmTask) Stop() {
 }
 
 func (t *FarmTask) Info() (result xmap.M) {
-	result = xmap.M{}
-	result["started"] = t.started
+	result = t.BaseInfo()
 	result["success_time"] = t.successTime
 	return
 }
@@ -192,7 +194,9 @@ func (t *FarmTask) farm() (err error) {
 	userConf := conf.Conf.GetUser(t.Username)
 	setSeeds := userConf.Map("set_seeds")
 	if setSeeds.Length() < 1 {
-		xlog.Infof("FarmTask(%v) set_seeds is empty", t.Username)
+		if t.Verbose {
+			xlog.Infof("FarmTask(%v) set_seeds is empty", t.Username)
+		}
 		return
 	}
 	t.CreateChromedpContext(t.Timeout)
