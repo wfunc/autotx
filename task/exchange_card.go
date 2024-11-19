@@ -92,29 +92,29 @@ func (t *ExchangeCardTask) exchange() (err error) {
 						return err
 					}
 					time.Sleep(1 * time.Second)
-					var outHTML string
-					err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outHTML).Do(ctx)
+					var outerHTML string
+					err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
 					if err != nil {
 						if t.Verbose {
 							xlog.Infof("ExchangeCardTask(%v) ExchangeCardTask(%v) Failed with err %v", t.Username, subCard, err)
 						}
 						return err
 					}
-					if strings.Contains(outHTML, "幸运卡:") {
+					if strings.Contains(outerHTML, "幸运卡:") {
 						err = chromedp.Click(fmt.Sprintf(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > div.mainarea > div > table > tbody > tr > td:nth-child(%s) > form > input[type=submit]:nth-child(2)`, subCard)).Do(ctx)
 						if err != nil {
 							return err
 						}
-						err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outHTML).Do(ctx)
+						err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
 						if err != nil {
 							return err
 						}
-						if strings.Contains(outHTML, "恭喜") {
+						if strings.Contains(outerHTML, "恭喜") {
 							if t.Verbose {
 								xlog.Infof("ExchangeCardTask(%v) Success", t.Username)
 							}
 							break
-						} else if strings.Contains(outHTML, "厉害!") {
+						} else if strings.Contains(outerHTML, "厉害!") {
 							if t.Verbose {
 								xlog.Infof("ExchangeCardTask(%v) All Success done", t.Username)
 							}

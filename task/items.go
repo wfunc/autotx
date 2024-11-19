@@ -1,9 +1,13 @@
 package task
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"strings"
 
+	"github.com/chromedp/chromedp"
+	"github.com/wfunc/go/xlog"
 	"golang.org/x/net/html"
 )
 
@@ -137,4 +141,21 @@ func ParseShopHTML(outerHTML string, shopMap map[string]string) error {
 	// Start traversing the HTML nodes
 	traverse(doc)
 	return nil
+}
+
+func (t *BaseTask) clickNext(ctx context.Context, selector string) bool {
+	var exists bool
+	if len(selector) < 1 {
+		selector = `//a[contains(text(), ">>下页")]`
+	}
+	script := fmt.Sprintf(`document.evaluate('%s', document, null, XPathResult.BOOLEAN_TYPE, null).booleanValue`, selector)
+	fmt.Println(script)
+	var err = chromedp.Evaluate(script, &exists).Do(ctx)
+	if err != nil {
+		if t.Verbose {
+			xlog.Infof("FarmTask(%v) extractTimes failed with err %v", t.Username, err)
+		}
+		return false
+	}
+	return exists
 }

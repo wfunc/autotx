@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -24,6 +25,7 @@ type FarmTask struct {
 	target      Target
 	Name        string
 	DoneAfter   time.Duration
+	nextTime    time.Time
 	successTime time.Time
 }
 
@@ -158,6 +160,7 @@ func (t *FarmTask) PaySeeds() (shopM map[string]string, err error) {
 
 func (t *FarmTask) Run() {
 	xlog.Infof("FarmTask(%v) started", t.Username)
+	t.nextTime = time.Time{}
 	t.farm()
 	ticker := time.NewTicker(t.TickerDelay)
 	defer ticker.Stop()
@@ -191,8 +194,17 @@ func (t *FarmTask) TaskName() string {
 }
 
 func (t *FarmTask) farm() (err error) {
+	// check next time
+	now := time.Now()
+	if t.nextTime.Sub(now) > 0 {
+		if t.Verbose {
+			xlog.Infof("FarmTask(%v) next time is %v, now is %v", t.Username, t.nextTime, now)
+		}
+		return
+	}
 	userConf := conf.Conf.GetUser(t.Username)
 	setSeeds := userConf.Map("set_seeds")
+	// check user set seeds
 	if setSeeds.Length() < 1 {
 		if t.Verbose {
 			xlog.Infof("FarmTask(%v) set_seeds is empty", t.Username)
@@ -210,6 +222,7 @@ func (t *FarmTask) farm() (err error) {
 	switch t.target {
 	case TargetSowSeeds:
 		err = t.sowSeeds(setSeeds)
+		t.nextTime = time.Now().Add(t.GetTime())
 	}
 
 	if err == nil {
@@ -233,37 +246,37 @@ func (t *FarmTask) sowSeeds(setSeeds xmap.M) (err error) {
 					if err != nil {
 						return err
 					}
-					var outHTML string
-					err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outHTML).Do(ctx)
+					var outerHTML string
+					err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
 					if err != nil {
 						return err
 					}
 					seedName := setSeeds.Str(k)
 					switch true {
-					case strings.Contains(outHTML, "种植成功"):
+					case strings.Contains(outerHTML, "种植成功"):
 						xlog.Infof("sowSeeds(%v) success with %v", t.Username, seedName)
-					case strings.Contains(outHTML, "你还未开通一键"):
+					case strings.Contains(outerHTML, "你还未开通一键"):
 						t.sowSeedsManual(ctx, k)
-					case strings.Contains(outHTML, "仓库中该种子已用完"):
+					case strings.Contains(outerHTML, "仓库中该种子已用完"):
 						if strings.Contains(seedName, "金币") {
 							err = chromedp.Navigate(`https://tx.com.cn/plugins/farm/cs/buySeeds.do?seedsId=` + k + "&num=1").Do(ctx)
 							if err != nil {
 								return err
 							}
-							err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outHTML).Do(ctx)
+							err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
 							if err != nil {
 								return err
 							}
-							if strings.Contains(outHTML, "恭喜,你成功购买了") {
+							if strings.Contains(outerHTML, "恭喜,你成功购买了") {
 								err = chromedp.Navigate(`https://tx.com.cn/plugins/farm/cs/sowSeedsAll.do?seedsId=` + k).Do(ctx)
 								if err != nil {
 									return err
 								}
-								err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outHTML).Do(ctx)
+								err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
 								if err != nil {
 									return err
 								}
-								if strings.Contains(outHTML, "种植成功") || strings.Contains(outHTML, "成功种植") {
+								if strings.Contains(outerHTML, "种植成功") || strings.Contains(outerHTML, "成功种植") {
 									xlog.Infof("sowSeeds(%v) success with %v", t.Username, seedName)
 								} else {
 									return nil
@@ -276,13 +289,13 @@ func (t *FarmTask) sowSeeds(setSeeds xmap.M) (err error) {
 							}
 						}
 					default:
-						var outHTMLErr string
-						err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > div.mainarea > div.dotline0`, &outHTMLErr).Do(ctx)
+						var outerHTMLErr string
+						err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > div.mainarea > div.dotline0`, &outerHTMLErr).Do(ctx)
 						if err != nil {
 							return err
 						}
-						if !strings.Contains(outHTMLErr, "还没有可种植的土地") {
-							// xlog.Infof("[%v]种菜失败☹️[%v]原因：%v", account, v, outHTMLErr)
+						if !strings.Contains(outerHTMLErr, "还没有可种植的土地") {
+							// xlog.Infof("[%v]种菜失败☹️[%v]原因：%v", account, v, outerHTMLErr)
 						}
 
 						err = t.sowSeedsLevel(ctx)
@@ -306,13 +319,13 @@ func (t *FarmTask) sowSeedsManual(ctx context.Context, seedID string) (err error
 	}
 
 	var needDoM = map[string]string{}
-	var outHtml string
-	err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outHtml).Do(ctx)
+	var outerHTML string
+	err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
 	if err != nil {
 		return
 	}
 
-	err = ExtractLinksWithPrefix(outHtml, needDoM, "https://tx.com.cn/plugins/farm/cs/", []string{"myBag.do", "digLand.do"})
+	err = ExtractLinksWithPrefix(outerHTML, needDoM, "https://tx.com.cn/plugins/farm/cs/", []string{"myBag.do", "digLand.do"})
 	if err != nil {
 		xlog.Infof("sowSeedsManual(%v) failed with err %v", t.Username, err)
 		return
@@ -331,15 +344,15 @@ func (t *FarmTask) sowSeedsManual(ctx context.Context, seedID string) (err error
 			if err != nil {
 				return
 			}
-			var outHtml string
-			err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outHtml).Do(ctx)
+			var outerHTML string
+			err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
 			if err != nil {
 				return
 			}
-			if strings.Contains(outHtml, "种植成功") {
+			if strings.Contains(outerHTML, "种植成功") {
 				xlog.Infof("sowSeedsManual(%v) success with %v", t.Username, seedID)
 			} else {
-				xlog.Infof("sowSeedsManual(%v) failed with %v html %v", t.Username, seedID, outHtml)
+				xlog.Infof("sowSeedsManual(%v) failed with %v html %v", t.Username, seedID, outerHTML)
 			}
 		}
 	}
@@ -375,24 +388,24 @@ func (t *FarmTask) sowSeedsRetry(ctx context.Context, seedID, seedName string) (
 		return err
 	}
 
-	var outHTML string
-	err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outHTML).Do(ctx)
+	var outerHTML string
+	err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
 	if err != nil {
 		return err
 	}
-	if strings.Contains(outHTML, "种植成功") {
+	if strings.Contains(outerHTML, "种植成功") {
 		xlog.Infof("sowSeedsRetry(%v) success with %v", t.Username, seedID)
 	} else {
-		var outHTMLErr string
-		err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > div.mainarea > div.dotline0`, &outHTMLErr).Do(ctx)
+		var outerHTMLErr string
+		err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > div.mainarea > div.dotline0`, &outerHTMLErr).Do(ctx)
 		if err != nil {
 			return err
 		}
-		if !strings.Contains(outHTMLErr, "还没有可种植的土地") {
+		if !strings.Contains(outerHTMLErr, "还没有可种植的土地") {
 		}
 	}
 
-	if strings.Contains(outHTML, "仓库中该种子已用完") {
+	if strings.Contains(outerHTML, "仓库中该种子已用完") {
 		if strings.Contains(seedName, "金币") {
 			// 购买种子重新种一次
 			err = chromedp.Navigate(`https://tx.com.cn/plugins/farm/cs/buySeeds.do?seedsId=` + seedID + "&num=1").Do(ctx)
@@ -401,21 +414,21 @@ func (t *FarmTask) sowSeedsRetry(ctx context.Context, seedID, seedName string) (
 				return err
 			}
 			// 恭喜,你成功购买了
-			err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outHTML).Do(ctx)
+			err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
 			if err != nil {
 				return err
 			}
-			if strings.Contains(outHTML, "恭喜,你成功购买了") {
+			if strings.Contains(outerHTML, "恭喜,你成功购买了") {
 				err = chromedp.Navigate(`https://tx.com.cn/plugins/farm/cs/sowSeedsAll.do?seedsId=` + seedID).Do(ctx)
 				if err != nil {
 					return err
 				}
 
-				err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outHTML).Do(ctx)
+				err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
 				if err != nil {
 					return err
 				}
-				if strings.Contains(outHTML, "种植成功") || strings.Contains(outHTML, "成功种植") {
+				if strings.Contains(outerHTML, "种植成功") || strings.Contains(outerHTML, "成功种植") {
 					xlog.Infof("sowSeedsRetry(%v) success with %v", t.Username, seedName)
 				} else {
 					return nil
@@ -423,6 +436,88 @@ func (t *FarmTask) sowSeedsRetry(ctx context.Context, seedID, seedName string) (
 			}
 		}
 
+	}
+	return
+}
+
+func (t *FarmTask) GetTime() (minTime time.Duration) {
+	t.login()
+	minTime = time.Duration(10 * time.Hour)
+	err := chromedp.Run(t.ctx,
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			url := "https://tx.com.cn/plugins/farm/index.do?pn=1"
+			var err = chromedp.Navigate(url).Do(ctx)
+			if err != nil {
+				return err
+			}
+			var outerHTML string
+			err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
+			if err == nil {
+				minTime = t.extractTimes(outerHTML, minTime)
+				for {
+					selector := `//a[contains(text(), ">>下页")]`
+					if !t.clickNext(ctx, selector) {
+						break
+					}
+					err = chromedp.Click(selector, chromedp.BySearch).Do(ctx)
+					if err != nil {
+						if t.Verbose {
+							xlog.Infof("FarmTask(%v) extractTimes failed with err %v", t.Username, err)
+						}
+						return err
+					}
+					err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
+					if err == nil {
+						t.extractTimes(outerHTML, minTime)
+					}
+				}
+			}
+
+			// }
+			return nil
+		}),
+	)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+// func extractTimes(html string) {
+// 	// 定义正则表达式匹配时间信息
+// 	re := regexp.MustCompile(`(\d+)小时(\d+)分钟`)
+// 	matches := re.FindAllStringSubmatch(html, -1)
+
+// 	// 输出提取的时间
+// 	for _, match := range matches {
+// 		if len(match) == 3 {
+// 			fmt.Printf("提取的时间: %s小时%s分钟\n", match[1], match[2])
+// 		}
+// 	}
+// 	time.Duration
+// }
+
+func (t *FarmTask) extractTimes(html string, minTime time.Duration) (currentMin time.Duration) {
+	re := regexp.MustCompile(`(\d+)小时(\d+)分钟`)
+	matches := re.FindAllStringSubmatch(html, -1)
+	currentMin = minTime
+	for _, match := range matches {
+		if len(match) == 3 {
+			hours, minutes := match[1], match[2]
+			hourDuration, err1 := time.ParseDuration(fmt.Sprintf("%sh", hours))
+			minuteDuration, err2 := time.ParseDuration(fmt.Sprintf("%sm", minutes))
+			if err1 != nil || err2 != nil {
+				continue
+			}
+			totalDuration := hourDuration + minuteDuration
+			if t.Verbose {
+				xlog.Infof("extractTimes ---> %v", totalDuration)
+			}
+			if totalDuration < currentMin {
+				currentMin = totalDuration
+			}
+		}
 	}
 	return
 }
