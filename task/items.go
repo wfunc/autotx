@@ -2,9 +2,9 @@ package task
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/chromedp/chromedp"
 	"github.com/wfunc/go/xlog"
@@ -27,11 +27,12 @@ const (
 
 // ExtractLinksWithPrefix parses the HTML content, extracts <a> tag href attributes
 // that contain any of the keys, and updates the result map with the specified prefix.
-func ExtractLinksWithPrefix(htmlContent string, result map[string]string, prefix string, keys []string) error {
+func ExtractLinksWithPrefix(htmlContent string, result *map[string]string, prefix string, keys []string) (map[string]bool, error) {
+	km := map[string]bool{}
 	// Parse the HTML document
 	doc, err := html.Parse(strings.NewReader(htmlContent))
 	if err != nil {
-		return err // Return parsing error
+		return nil, err // Return parsing error
 	}
 
 	// Recursive function to traverse the HTML node tree
@@ -43,7 +44,8 @@ func ExtractLinksWithPrefix(htmlContent string, result map[string]string, prefix
 			if href != "" {
 				for _, key := range keys {
 					if strings.Contains(href, key) {
-						result[href] = prefix
+						(*result)[href] = prefix
+						km[key] = true
 						break // Exit the loop after matching a key
 					}
 				}
@@ -57,7 +59,7 @@ func ExtractLinksWithPrefix(htmlContent string, result map[string]string, prefix
 
 	// Start traversing the HTML nodes
 	traverse(doc)
-	return nil
+	return km, nil
 }
 
 // getAttributeValue retrieves the value of the specified attribute from an HTML node.
@@ -144,18 +146,109 @@ func ParseShopHTML(outerHTML string, shopMap map[string]string) error {
 }
 
 func (t *BaseTask) clickNext(ctx context.Context, selector string) bool {
-	var exists bool
-	if len(selector) < 1 {
-		selector = `//a[contains(text(), ">>下页")]`
-	}
-	script := fmt.Sprintf(`document.evaluate('%s', document, null, XPathResult.BOOLEAN_TYPE, null).booleanValue`, selector)
-	fmt.Println(script)
-	var err = chromedp.Evaluate(script, &exists).Do(ctx)
-	if err != nil {
-		if t.Verbose {
-			xlog.Infof("FarmTask(%v) extractTimes failed with err %v", t.Username, err)
+	for i := 0; i < 3; i++ {
+		// var exists bool
+		if len(selector) < 1 {
+			selector = `//a[contains(text(), "下页")]`
 		}
-		return false
+
+		var err = chromedp.Click(selector, chromedp.NodeVisible).Do(ctx)
+		// script := fmt.Sprintf(`document.evaluate('%s', document, null, XPathResult.BOOLEAN_TYPE, null).booleanValue`, selector)
+		// var err = chromedp.Evaluate(script, &exists).Do(ctx)
+		if err == nil {
+			break
+		}
+		if t.Verbose {
+			xlog.Infof("FarmTask(%v) Evaluate failed with err %v", t.Username, err)
+		}
+		err = chromedp.Reload().Do(ctx)
+		if err != nil {
+			if t.Verbose {
+				xlog.Infof("FarmTask(%v) Reload failed with err %v", t.Username, err)
+			}
+			return false
+		}
+		err = chromedp.Sleep(1 * time.Second).Do(ctx)
+		if err != nil {
+			if t.Verbose {
+				xlog.Infof("FarmTask(%v) Sleep failed with err %v", t.Username, err)
+			}
+			return false
+		}
 	}
-	return exists
+	return true
+}
+
+func XOuterHTML(ctx context.Context, outerHTML *string, selectors ...string) (err error) {
+	for i := 0; i < 3; i++ {
+		selector := `body > div.mainareaOutside_pc > div.mainareaCenter_pc`
+		if len(selectors) > 0 {
+			selector = selectors[0]
+		}
+		err = chromedp.OuterHTML(selector, outerHTML).Do(ctx)
+		if err == nil {
+			break
+		}
+		err = chromedp.Sleep(1 * time.Second).Do(ctx)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+type M struct {
+	Map      map[string]string
+	Count    int
+	CountMap map[int]map[string]string
+}
+
+func NewM() *M {
+	return &M{
+		Map:      make(map[string]string),
+		Count:    0,
+		CountMap: make(map[int]map[string]string),
+	}
+}
+
+func (m *M) ExtractLinksWithPrefix(htmlContent string, prefix string, keys []string) (map[string]bool, error) {
+	defer func() {
+		m.Count++
+	}()
+	km := map[string]bool{}
+	// Parse the HTML document
+	doc, err := html.Parse(strings.NewReader(htmlContent))
+	if err != nil {
+		return nil, err // Return parsing error
+	}
+
+	// Recursive function to traverse the HTML node tree
+	var traverse func(*html.Node)
+	traverse = func(node *html.Node) {
+		// Process only <a> tags
+		if node.Type == html.ElementNode && node.Data == "a" {
+			href := getAttributeValue(node, "href")
+			if href != "" {
+				for _, key := range keys {
+					if strings.Contains(href, key) {
+						if m.CountMap[m.Count] == nil {
+							m.CountMap[m.Count] = map[string]string{}
+						}
+						m.Map[href] = prefix
+						m.CountMap[m.Count][href] = prefix
+						km[key] = true
+						break // Exit the loop after matching a key
+					}
+				}
+			}
+		}
+		// Recursively process child nodes
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			traverse(child)
+		}
+	}
+
+	// Start traversing the HTML nodes
+	traverse(doc)
+	return km, nil
 }

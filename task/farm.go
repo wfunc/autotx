@@ -18,6 +18,7 @@ type Target string
 const (
 	TargetQuerySeeds Target = "querySeeds"
 	TargetSowSeeds   Target = "sowSeeds"
+	TargetWater      Target = "water"
 )
 
 type FarmTask struct {
@@ -34,6 +35,8 @@ func NewFarmTask(target Target, username, password string) *FarmTask {
 	switch target {
 	case TargetSowSeeds:
 		base.TickerDelay = 60 * time.Second
+	case TargetWater:
+		base.TickerDelay = 30 * time.Second
 	}
 	base.Timeout = 10 * time.Minute
 	t := &FarmTask{Name: "farm-" + string(target), BaseTask: base, target: target}
@@ -68,7 +71,7 @@ func (t *FarmTask) QueryShop() (shopM map[string]string, err error) {
 						if err != nil {
 							break
 						}
-						if textContent != ">>下页" {
+						if textContent != "下页" {
 							break
 						}
 						chromedp.Navigate(href).Do(ctx)
@@ -98,7 +101,7 @@ func (t *FarmTask) QueryShop() (shopM map[string]string, err error) {
 						}
 						// xlog.Infof("textContent is %v, href is %v", textContent, href)
 
-						if textContent != ">>下页" {
+						if textContent != "下页" {
 							break
 						}
 						chromedp.Navigate(href).Do(ctx)
@@ -139,7 +142,7 @@ func (t *FarmTask) PaySeeds() (shopM map[string]string, err error) {
 					}
 					// xlog.Infof("textContent is %v, href is %v", textContent, href)
 
-					if textContent != ">>下页" {
+					if textContent != "下页" {
 						break
 					}
 					chromedp.Navigate(href).Do(ctx)
@@ -223,6 +226,9 @@ func (t *FarmTask) farm() (err error) {
 	case TargetSowSeeds:
 		err = t.sowSeeds(setSeeds)
 		t.nextTime = time.Now().Add(t.GetTime())
+		xlog.Infof("FarmTask(%v) will do nextime on %v", t.TaskName(), t.nextTime.Format("2006-01-02 15:04:05"))
+	case TargetWater:
+		err = t.water()
 	}
 
 	if err == nil {
@@ -325,7 +331,7 @@ func (t *FarmTask) sowSeedsManual(ctx context.Context, seedID string) (err error
 		return
 	}
 
-	err = ExtractLinksWithPrefix(outerHTML, needDoM, "https://tx.com.cn/plugins/farm/cs/", []string{"myBag.do", "digLand.do"})
+	_, err = ExtractLinksWithPrefix(outerHTML, &needDoM, "https://tx.com.cn/plugins/farm/cs/", []string{"myBag.do", "digLand.do"})
 	if err != nil {
 		xlog.Infof("sowSeedsManual(%v) failed with err %v", t.Username, err)
 		return
@@ -370,7 +376,7 @@ func (t *FarmTask) sowSeedsLevel(ctx context.Context) (err error) {
 		return err
 	}
 	m := map[string]string{}
-	ExtractLinksWithPrefix(outerHTML, m, "https://tx.com.cn/plugins/farm/cs/", []string{"seedsInfo.do"})
+	ExtractLinksWithPrefix(outerHTML, &m, "https://tx.com.cn/plugins/farm/cs/", []string{"seedsInfo.do"})
 	seedM := conf.Conf.GetSeedsRevert()
 	for k := range m {
 		seedsID := strings.Split(k, "seedsId=")[1]
@@ -455,16 +461,9 @@ func (t *FarmTask) GetTime() (minTime time.Duration) {
 			if err == nil {
 				minTime = t.extractTimes(outerHTML, minTime)
 				for {
-					selector := `//a[contains(text(), ">>下页")]`
+					selector := `//a[contains(text(), "下页")]`
 					if !t.clickNext(ctx, selector) {
 						break
-					}
-					err = chromedp.Click(selector, chromedp.BySearch).Do(ctx)
-					if err != nil {
-						if t.Verbose {
-							xlog.Infof("FarmTask(%v) extractTimes failed with err %v", t.Username, err)
-						}
-						return err
 					}
 					err = chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc`, &outerHTML).Do(ctx)
 					if err == nil {

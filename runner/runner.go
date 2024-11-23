@@ -145,4 +145,9 @@ func (r *Runner) StartTask(username, password string) {
 	sowSeeds.Verbose = os.Getenv("Verbose") == "1"
 	r.AddTask(sowSeeds)
 
+	// farm water
+	water := task.NewFarmTask(task.TargetWater, username, password)
+	water.Verbose = os.Getenv("Verbose") == "1"
+	r.AddTask(water)
+
 }
