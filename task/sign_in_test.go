@@ -6,12 +6,14 @@ import (
 )
 
 func TestSignIn(t *testing.T) {
+	CodeURL = "https://ocr.rosetts.com/ocr?url="
+
 	sn := NewSignInTask("37161619", "Aa112211")
 	sn.Headless = false
 	sn.Verbose = true
 
 	wg := sync.WaitGroup{}
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 1; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

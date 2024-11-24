@@ -105,7 +105,7 @@ func (t *SignInTask) sign() (err error) {
 			}
 			switch true {
 			case strings.Contains(str, "请输入图片中的验证码"):
-				err = chromedp.Evaluate(`document.querySelector("body > form > img").src`, &str).Do(ctx)
+				err = chromedp.Evaluate(`document.querySelector("body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > img").src`, &str).Do(ctx)
 				if err != nil {
 					xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 					return err
@@ -117,12 +117,13 @@ func (t *SignInTask) sign() (err error) {
 					xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 					return err
 				}
-				err = chromedp.WaitVisible(`body > form > input[type=text]:nth-child(5)`).Do(ctx)
+
+				err = chromedp.WaitVisible(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > input[type=text]:nth-child(5)`).Do(ctx)
 				if err != nil {
 					xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 					return err
 				}
-				err = chromedp.SendKeys(`body > form > input[type=text]:nth-child(5)`, authnum).Do(ctx)
+				err = chromedp.SendKeys(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > input[type=text]:nth-child(5)`, authnum).Do(ctx)
 				if err != nil {
 					xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 					return err
@@ -133,7 +134,7 @@ func (t *SignInTask) sign() (err error) {
 					return err
 				}
 
-				err = chromedp.Click(`body > form > input[type=submit]:nth-child(17)`).Do(ctx)
+				err = chromedp.Click(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > input[type=submit]:nth-child(17)`).Do(ctx)
 				if err != nil {
 					err = chromedp.OuterHTML(`body`, &str).Do(ctx)
 					if err != nil {
