@@ -2,16 +2,18 @@ package task
 
 import (
 	"context"
+	"regexp"
 	"strings"
 
 	"github.com/chromedp/chromedp"
+	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/go/xlog"
 )
 
 func (t *FarmTask) water() (err error) {
 	count := 0
 	f := chromedp.ActionFunc(func(ctx context.Context) error {
-		waterUrl := "https://tx.com.cn/plugins/farm/rank.do?oper=3"
+		waterUrl := "https://tx.com.cn/plugins/farm/rank.do"
 		err = chromedp.Navigate(waterUrl).Do(ctx)
 		if err != nil {
 			return err
@@ -63,7 +65,7 @@ func (t *FarmTask) water() (err error) {
 				if err != nil {
 					return err
 				}
-				km1, _ := subTasks.ExtractLinksWithPrefix(outerHTML, "https://tx.com.cn/plugins/farm/", []string{"water.do", "killInsects.do", "weeding.do"})
+				km1, _ := subTasks.ExtractLinksWithPrefix(outerHTML, "https://tx.com.cn/plugins/farm/", []string{"water.do", "killInsects.do", "weeding.do", "steal.do"})
 				for kmk, kmv := range km1 {
 					km[kmk] = kmv
 				}
@@ -82,7 +84,22 @@ func (t *FarmTask) water() (err error) {
 			if t.Verbose {
 				xlog.Infof("FarmTask(%v-%v) Success subTasks ---> %v", t.Username, t.target, len(subTasks.Map))
 			}
+			notSteal := conf.Conf.LoadNotDo("steal")
 			for subK, subV := range subTasks.Map {
+				if strings.Contains(subK, "steal.do") {
+					// 正则表达式匹配 tuid 的值
+					re := regexp.MustCompile(`tuid=([0-9]+)`)
+					match := re.FindStringSubmatch(subK)
+					if len(match) > 1 {
+						if strings.Contains(notSteal, match[1]) {
+							if t.Verbose {
+								xlog.Infof("FarmTask(%v-%v) NotSteal %v", t.Username, t.target, match[1])
+							}
+							continue
+						}
+					}
+				}
+
 				if strings.Contains(subK, "water.do") && km["water.go"] && waterDone {
 					continue
 				}

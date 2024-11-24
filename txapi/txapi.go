@@ -14,4 +14,9 @@ func Handle(router *gin.Engine) {
 
 	task := api.Group("/task")
 	task.GET("/list", ListTasksHandler)
+
+	notDo := api.Group("notDo")
+	notDo.GET("/add", AddNotDoHandler)
+	notDo.GET("/remove", RemoveNotDoHandler)
+	notDo.GET("/list", ListNotDoHandler)
 }

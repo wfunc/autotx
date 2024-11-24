@@ -3,6 +3,7 @@ package conf
 import (
 	"encoding/json"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/wfunc/util/xmap"
@@ -12,6 +13,7 @@ type JSONFile struct {
 	Users       map[string]xmap.M
 	Seeds       map[string]string
 	SeedsRevert map[string]string
+	NotDo       map[string]string
 	Lock        sync.RWMutex
 }
 
@@ -27,6 +29,7 @@ func NewJSONFile() *JSONFile {
 		Users:       map[string]xmap.M{},
 		Seeds:       map[string]string{},
 		SeedsRevert: map[string]string{},
+		NotDo:       map[string]string{},
 		Lock:        sync.RWMutex{},
 	}
 }
@@ -42,20 +45,55 @@ func (j *JSONFile) Load() (err error) {
 	if err != nil {
 		return
 	}
+	err = ReadJSON("conf/not_do.json", &j.NotDo)
+	if err != nil {
+		return
+	}
 	for k, v := range j.Seeds {
 		j.SeedsRevert[v] = k
 	}
 	return
 }
 
-func (j *JSONFile) Save() (err error) {
+func (j *JSONFile) Save(keys ...string) (err error) {
 	j.Lock.Lock()
 	defer j.Lock.Unlock()
+	if len(keys) > 0 {
+		for _, key := range keys {
+			filename := ""
+			var v interface{}
+			switch key {
+			case "user":
+				filename = "conf/users.json"
+				v = j.Users
+			case "seed":
+				filename = "conf/seeds.json"
+				v = j.Seeds
+			case "not_do":
+				filename = "conf/not_do.json"
+				v = j.NotDo
+			}
+			if len(filename) > 0 {
+				err = WriteJSON(filename, v)
+				if err != nil {
+					return
+				}
+			}
+		}
+		return
+	}
 	err = WriteJSON("conf/users.json", j.Users)
 	if err != nil {
 		return
 	}
 	err = WriteJSON("conf/seeds.json", j.Seeds)
+	if err != nil {
+		return
+	}
+	err = WriteJSON("conf/not_do.json", j.NotDo)
+	if err != nil {
+		return
+	}
 	return
 }
 
@@ -75,7 +113,7 @@ func (j *JSONFile) AddUser(username, password string) {
 	j.Lock.Lock()
 	defer func() {
 		j.Lock.Unlock()
-		j.Save()
+		j.Save("user")
 	}()
 	if _, ok := j.Users[username]; !ok {
 		j.Users[username] = xmap.M{}
@@ -87,7 +125,7 @@ func (j *JSONFile) RemoveUser(username string) {
 	j.Lock.Lock()
 	defer func() {
 		j.Lock.Unlock()
-		j.Save()
+		j.Save("user")
 	}()
 	delete(j.Users, username)
 }
@@ -102,7 +140,7 @@ func (j *JSONFile) SetSeeds(seeds map[string]string) {
 	j.Lock.Lock()
 	defer func() {
 		j.Lock.Unlock()
-		j.Save()
+		j.Save("seed")
 	}()
 
 	for k, v := range seeds {
@@ -121,6 +159,69 @@ func (j *JSONFile) GetSeedName(seedID string) string {
 	j.Lock.RLock()
 	defer j.Lock.RUnlock()
 	return j.SeedsRevert[seedID]
+}
+
+func (j *JSONFile) AddNotDo(key, value string) {
+	j.Lock.Lock()
+	defer func() {
+		j.Lock.Unlock()
+		j.Save("not_do")
+	}()
+	if _, ok := j.NotDo[key]; !ok {
+		j.NotDo[key] = ""
+	}
+	if len(j.NotDo[key]) < 1 {
+		j.NotDo[key] = value
+		return
+	}
+	values := strings.Split(j.NotDo[key], ",")
+	for _, v := range values {
+		if v == value {
+			return
+		}
+	}
+	values = append(values, value)
+	j.NotDo[key] = strings.Join(values, ",")
+}
+
+func (j *JSONFile) RemoveNotDo(key, value string) {
+	j.Lock.Lock()
+	defer func() {
+		j.Lock.Unlock()
+		j.Save("not_do")
+	}()
+	if _, ok := j.NotDo[key]; !ok {
+		j.NotDo[key] = ""
+	}
+	values := strings.Split(j.NotDo[key], ",")
+	for i, v := range values {
+		if v == value {
+			values = append(values[:i], values[i+1:]...)
+			break
+		}
+	}
+	j.NotDo[key] = strings.Join(values, ",")
+}
+
+func (j *JSONFile) ListNotDo(key string) []string {
+	j.Lock.RLock()
+	defer j.Lock.RUnlock()
+	if _, ok := j.NotDo[key]; !ok {
+		return []string{}
+	}
+	if len(j.NotDo[key]) < 1 {
+		return []string{}
+	}
+	return strings.Split(j.NotDo[key], ",")
+}
+
+func (j *JSONFile) LoadNotDo(key string) string {
+	j.Lock.RLock()
+	defer j.Lock.RUnlock()
+	if _, ok := j.NotDo[key]; !ok {
+		return ""
+	}
+	return j.NotDo[key]
 }
 
 // ReadJSON will read file and unmarshal to value
