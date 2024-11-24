@@ -14,6 +14,7 @@ type JSONFile struct {
 	Seeds       map[string]string
 	SeedsRevert map[string]string
 	NotDo       map[string]string
+	Do          map[string]string
 	Lock        sync.RWMutex
 }
 
@@ -30,6 +31,7 @@ func NewJSONFile() *JSONFile {
 		Seeds:       map[string]string{},
 		SeedsRevert: map[string]string{},
 		NotDo:       map[string]string{},
+		Do:          map[string]string{},
 		Lock:        sync.RWMutex{},
 	}
 }
@@ -46,6 +48,10 @@ func (j *JSONFile) Load() (err error) {
 		return
 	}
 	err = ReadJSON("conf/not_do.json", &j.NotDo)
+	if err != nil {
+		return
+	}
+	err = ReadJSON("conf/do.json", &j.Do)
 	if err != nil {
 		return
 	}
@@ -72,6 +78,9 @@ func (j *JSONFile) Save(keys ...string) (err error) {
 			case "not_do":
 				filename = "conf/not_do.json"
 				v = j.NotDo
+			case "do":
+				filename = "conf/do.json"
+				v = j.Do
 			}
 			if len(filename) > 0 {
 				err = WriteJSON(filename, v)
@@ -91,6 +100,10 @@ func (j *JSONFile) Save(keys ...string) (err error) {
 		return
 	}
 	err = WriteJSON("conf/not_do.json", j.NotDo)
+	if err != nil {
+		return
+	}
+	err = WriteJSON("conf/do.json", j.Do)
 	if err != nil {
 		return
 	}
@@ -222,6 +235,69 @@ func (j *JSONFile) LoadNotDo(key string) string {
 		return ""
 	}
 	return j.NotDo[key]
+}
+
+func (j *JSONFile) AddDo(key, value string) {
+	j.Lock.Lock()
+	defer func() {
+		j.Lock.Unlock()
+		j.Save("do")
+	}()
+	if _, ok := j.Do[key]; !ok {
+		j.Do[key] = ""
+	}
+	if len(j.Do[key]) < 1 {
+		j.Do[key] = value
+		return
+	}
+	values := strings.Split(j.Do[key], ",")
+	for _, v := range values {
+		if v == value {
+			return
+		}
+	}
+	values = append(values, value)
+	j.Do[key] = strings.Join(values, ",")
+}
+
+func (j *JSONFile) RemoveDo(key, value string) {
+	j.Lock.Lock()
+	defer func() {
+		j.Lock.Unlock()
+		j.Save("do")
+	}()
+	if _, ok := j.Do[key]; !ok {
+		j.Do[key] = ""
+	}
+	values := strings.Split(j.Do[key], ",")
+	for i, v := range values {
+		if v == value {
+			values = append(values[:i], values[i+1:]...)
+			break
+		}
+	}
+	j.Do[key] = strings.Join(values, ",")
+}
+
+func (j *JSONFile) ListDo(key string) []string {
+	j.Lock.RLock()
+	defer j.Lock.RUnlock()
+	if _, ok := j.Do[key]; !ok {
+		return []string{}
+	}
+	if len(j.Do[key]) < 1 {
+		return []string{}
+	}
+	return strings.Split(j.Do[key], ",")
+}
+
+func (j *JSONFile) LoadDo(key string) string {
+	j.Lock.RLock()
+	defer j.Lock.RUnlock()
+	if _, ok := j.Do[key]; !ok {
+		return ""
+	}
+	return j.Do[key]
 }
 
 // ReadJSON will read file and unmarshal to value

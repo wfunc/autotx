@@ -2,10 +2,12 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/chromedp/chromedp"
+	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/go/xlog"
 	"github.com/wfunc/util/xmap"
 )
@@ -91,9 +93,38 @@ func (t *SignInTask) sign() (err error) {
 		chromedp.Sleep(1*time.Second),
 		chromedp.Navigate(`https://tx.com.cn/plugins/pet2/cs/exchange.do?batch=1&act=5`),
 		chromedp.Sleep(1*time.Second),
-		chromedp.Navigate(`https://tx.com.cn/activity/qq/cs/sign.do`),
-		chromedp.Sleep(1*time.Second),
+
 		chromedp.ActionFunc(func(ctx context.Context) error {
+			syndic := conf.Conf.LoadDo("syndic")
+			if len(syndic) > 0 {
+				friendIDs := strings.Split(syndic, ",")
+				for _, friendID := range friendIDs {
+					if t.Username == friendID {
+						continue
+					}
+					err = chromedp.Navigate(fmt.Sprintf("https://tx.com.cn/show/syndic.do?score=1&friendId=%v", friendID)).Do(ctx)
+					if err != nil {
+						xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
+						return err
+					}
+					err = chromedp.Sleep(1 * time.Second).Do(ctx)
+					if err != nil {
+						xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
+						return err
+					}
+				}
+			}
+
+			err = chromedp.Navigate(`https://tx.com.cn/activity/qq/cs/sign.do`).Do(ctx)
+			if err != nil {
+				xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
+				return err
+			}
+			err = chromedp.Sleep(1 * time.Second).Do(ctx)
+			if err != nil {
+				xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
+				return err
+			}
 			var str string
 			err = chromedp.OuterHTML(`body`, &str).Do(ctx)
 			if err != nil {
