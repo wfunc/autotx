@@ -16,3 +16,4 @@ migrate_working_dir/
 autotx
 autotx.exe
 conf/*.json
+temp.json
