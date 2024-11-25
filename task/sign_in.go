@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/chromedp/chromedp"
-	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/go/xlog"
 	"github.com/wfunc/util/xmap"
 )
@@ -21,7 +21,7 @@ type SignInTask struct {
 
 func NewSignInTask(username, password string) *SignInTask {
 	base := NewBaseTaskWithUserInfo(username, password)
-	base.Timeout = 5 * time.Minute
+	base.Timeout = 2 * time.Minute
 	t := &SignInTask{Name: "sign-in", BaseTask: base}
 	return t
 }
@@ -67,6 +67,8 @@ func (t *SignInTask) clear() {
 }
 
 func (t *SignInTask) sign() (err error) {
+	signInLock.Lock()
+	defer signInLock.Unlock()
 	now := time.Now()
 	if t.successTime.Year() == now.Year() && t.successTime.Month() == now.Month() && t.successTime.Day() == now.Day() {
 		if t.Verbose {
@@ -101,24 +103,30 @@ func (t *SignInTask) sign() (err error) {
 		chromedp.Sleep(1*time.Second),
 
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			syndic := conf.Conf.LoadDo("syndic")
-			if len(syndic) > 0 {
-				friendIDs := strings.Split(syndic, ",")
-				for _, friendID := range friendIDs {
-					if t.Username == friendID {
-						continue
-					}
-					err = chromedp.Navigate(fmt.Sprintf("https://tx.com.cn/show/syndic.do?score=1&friendId=%v", friendID)).Do(ctx)
-					if err != nil {
-						xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
-						return err
-					}
-					err = chromedp.Sleep(1 * time.Second).Do(ctx)
-					if err != nil {
-						xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
-						return err
-					}
-				}
+			// defer func() {
+			// 	syndic := conf.Conf.LoadDo("syndic")
+			// 	if len(syndic) > 0 {
+			// 		friendIDs := strings.Split(syndic, ",")
+			// 		for _, friendID := range friendIDs {
+			// 			if t.Username == friendID {
+			// 				continue
+			// 			}
+			// 			err = chromedp.Navigate(fmt.Sprintf("https://tx.com.cn/show/syndic.do?score=1&friendId=%v", friendID)).Do(ctx)
+			// 			if err != nil {
+			// 				xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
+			// 				return
+			// 			}
+			// 			err = chromedp.Sleep(1 * time.Second).Do(ctx)
+			// 			if err != nil {
+			// 				xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
+			// 				return
+			// 			}
+			// 		}
+			// 	}
+			// }()
+
+			if t.Verbose {
+				xlog.Infof("SignInTask(%v) sign start--->1", t.Username)
 			}
 
 			err = chromedp.Navigate(`https://tx.com.cn/activity/qq/cs/sign.do`).Do(ctx)
@@ -131,34 +139,51 @@ func (t *SignInTask) sign() (err error) {
 				xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 				return err
 			}
+			if t.Verbose {
+				xlog.Infof("SignInTask(%v) sign start--->2", t.Username)
+			}
 			var str string
 			err = chromedp.OuterHTML(`body`, &str).Do(ctx)
 			if err != nil {
 				xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 				return err
 			}
+			if t.Verbose {
+				xlog.Infof("SignInTask(%v) sign start--->3", t.Username)
+			}
 			if strings.Contains(str, "今日已签到过") {
 				return nil
 			}
 			switch true {
 			case strings.Contains(str, "请输入图片中的验证码"):
+				if t.Verbose {
+					xlog.Infof("SignInTask(%v) sign start--->4", t.Username)
+				}
 				err = chromedp.Evaluate(`document.querySelector("body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > img").src`, &str).Do(ctx)
 				if err != nil {
 					xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 					return err
 				}
 
+				if t.Verbose {
+					xlog.Infof("SignInTask(%v) sign start--->5", t.Username)
+				}
 				authnum := getCode(str)
 				err = chromedp.Sleep(1 * time.Second).Do(ctx)
 				if err != nil {
 					xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 					return err
 				}
-
+				if t.Verbose {
+					xlog.Infof("SignInTask(%v) sign start---> url %v code %v", t.Username, str, authnum)
+				}
 				err = chromedp.WaitVisible(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > input[type=text]:nth-child(5)`).Do(ctx)
 				if err != nil {
 					xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 					return err
+				}
+				if t.Verbose {
+					xlog.Infof("SignInTask(%v) sign start--->7", t.Username)
 				}
 				err = chromedp.SendKeys(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > input[type=text]:nth-child(5)`, authnum).Do(ctx)
 				if err != nil {
@@ -171,12 +196,37 @@ func (t *SignInTask) sign() (err error) {
 					return err
 				}
 
-				err = chromedp.Click(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > input[type=submit]:nth-child(17)`).Do(ctx)
+				if t.Verbose {
+					xlog.Infof("SignInTask(%v) sign start--->8", t.Username)
+				}
+
+				err = chromedp.EvaluateAsDevTools(`document.querySelector("input[type=submit][value='确定']").click()`, nil).Do(ctx)
+				// err = chromedp.Click(`input[type=submit][value="确定"]`, chromedp.NodeVisible).Do(ctx)
+				// err = chromedp.Click(`//input[@type='submit' and @value='确定']`, chromedp.NodeVisible).Do(ctx)
+				// err = chromedp.Click(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > input[type=submit]:nth-child(17)`).Do(ctx)
 				if err != nil {
+					if t.Verbose {
+						xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
+					}
 					err = chromedp.OuterHTML(`body`, &str).Do(ctx)
 					if err != nil {
 						return err
 					}
+				}
+				if t.Verbose {
+					xlog.Infof("SignInTask(%v) sign start--->9", t.Username)
+				}
+				outerHTML := ""
+				err = XOuterHTML(ctx, &outerHTML)
+				if err != nil {
+					if t.Verbose {
+						xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
+					}
+					return err
+				}
+				if strings.Contains(outerHTML, "失败!系统检测多号刷签到!") {
+					err = fmt.Errorf("失败！系统检测多号刷签到！")
+					xlog.Infof("SignInTask(%v) sign with 失败!系统检测多号刷签到!", t.Username)
 				}
 
 			default:
@@ -200,3 +250,6 @@ func (t *SignInTask) sign() (err error) {
 	}
 	return
 }
+
+// 串行签到
+var signInLock = sync.Mutex{}
