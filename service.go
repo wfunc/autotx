@@ -11,6 +11,7 @@ import (
 	"github.com/ulule/limiter/v3/drivers/store/memory"
 	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/autotx/runner"
+	"github.com/wfunc/autotx/task"
 	"github.com/wfunc/autotx/txapi"
 	"github.com/wfunc/go/xlog"
 )
@@ -52,6 +53,7 @@ func main() {
 	r.GET("/favicon.ico", func(c *gin.Context) {
 		c.String(http.StatusNotFound, "")
 	})
+	task.BootstrapConfig()
 	// conf
 	conf.Bootstrap()
 	// runner

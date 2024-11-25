@@ -130,6 +130,13 @@ func (r *Runner) Stop() int {
 }
 
 func (r *Runner) StartTask(username, password string) {
+	if os.Getenv("MODE") == "sign" {
+		// sign
+		signTask := task.NewSignInTask(username, password)
+		signTask.Verbose = os.Getenv("Verbose") == "1"
+		r.AddTask(signTask)
+		return
+	}
 	// sign
 	signTask := task.NewSignInTask(username, password)
 	signTask.Verbose = os.Getenv("Verbose") == "1"

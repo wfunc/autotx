@@ -74,6 +74,12 @@ func (t *SignInTask) sign() (err error) {
 		}
 		return
 	}
+	makeTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 6, 0, 0, now.Location())
+	// 如果now小于makeTime,直到makeTime到了再继续
+	if now.Before(makeTime) {
+		xlog.Infof("SignInTask(%v) sign will on %v start", t.Username, makeTime)
+		time.Sleep(makeTime.Sub(now))
+	}
 	t.CreateChromedpContext(t.Timeout)
 	defer t.Cancel()
 	// login
