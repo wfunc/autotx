@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/wfunc/go/xlog"
 	"github.com/wfunc/util/xmap"
 )
 
@@ -41,19 +42,19 @@ func (j *JSONFile) Load() (err error) {
 	defer j.Lock.Unlock()
 	err = ReadJSON("conf/users.json", &j.Users)
 	if err != nil {
-		return
+		xlog.Infof("ReadJSON(conf/users.json) Failed with err %v", err)
 	}
 	err = ReadJSON("conf/seeds.json", &j.Seeds)
 	if err != nil {
-		return
+		xlog.Infof("ReadJSON(conf/seeds.json) Failed with err %v", err)
 	}
 	err = ReadJSON("conf/not_do.json", &j.NotDo)
 	if err != nil {
-		return
+		xlog.Infof("ReadJSON(conf/not_do.json) Failed with err %v", err)
 	}
 	err = ReadJSON("conf/do.json", &j.Do)
 	if err != nil {
-		return
+		xlog.Infof("ReadJSON(conf/do.json) Failed with err %v", err)
 	}
 	for k, v := range j.Seeds {
 		j.SeedsRevert[v] = k
