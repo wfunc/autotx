@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"log"
 	"os"
 	"strings"
 	"sync"
@@ -17,13 +16,13 @@ var RunnerShared *Runner
 func Bootstrap() {
 	if RunnerShared != nil {
 		RunnerShared.All()
-		log.Println("ReBootstraped")
+		xlog.Infof("ReBootstraped")
 		return
 	}
-	log.Println("Bootstraping...")
+	xlog.Infof("Bootstraping...")
 	RunnerShared = NewRunner()
 	RunnerShared.All()
-	log.Println("Bootstraped")
+	xlog.Infof("Bootstraped")
 }
 
 type Runner struct {
@@ -50,7 +49,8 @@ func (r *Runner) All() {
 	if len(users) < 1 {
 		return
 	}
-	seed := len(conf.Conf.GetSeedsRevert()["1"]) < 1
+	seeds := conf.Conf.GetSeedsRevert()
+	seed := len(seeds["1"]) < 1
 	for username, userConf := range users {
 		password := userConf.Str("password")
 		if seed {
