@@ -25,6 +25,7 @@ type BaseTask struct {
 	exiter      chan int
 	Verbose     bool
 	lock        sync.RWMutex
+	ParentTask  Task
 }
 
 func NewBaseTask(ctx context.Context) *BaseTask {
