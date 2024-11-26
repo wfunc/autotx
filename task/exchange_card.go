@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/chromedp/chromedp"
+	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/go/xlog"
 	"github.com/wfunc/util/xmap"
 )
@@ -141,6 +142,7 @@ func (t *ExchangeCardTask) exchange() (err error) {
 	)
 	if err == nil {
 		t.successTime = time.Now()
+		conf.Conf.UpdateUser(t.Username, "exchangeCard", time.Now().Format(`2006-01-02 15:04:05`))
 	}
 	return
 }

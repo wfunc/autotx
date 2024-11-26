@@ -4,6 +4,7 @@ import (
 	"context"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/chromedp/chromedp"
 	"github.com/wfunc/autotx/conf"
@@ -163,6 +164,9 @@ func (t *FarmTask) water() (err error) {
 	}
 	if t.Verbose {
 		xlog.Infof("FarmTask(%v-%v) Success with %v", t.Username, t.target, count)
+	}
+	if err == nil {
+		conf.Conf.UpdateUser(t.Username, "lastFarmWater", time.Now().Format(`2006-01-02 15:04:05`))
 	}
 	return
 }

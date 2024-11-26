@@ -2,11 +2,11 @@ package task
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/chromedp/chromedp"
+	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/go/xlog"
 	"github.com/wfunc/util/xmap"
 )
@@ -84,7 +84,7 @@ func (t *GroupSignInTask) groupSignIn() (err error) {
 		xlog.Infof("GroupSignInTask(%v) login failed with err %v", t.Username, err)
 		return
 	}
-
+	var result string
 	err = chromedp.Run(t.ctx,
 		chromedp.Navigate(`https://tx.com.cn/myroom/visitor/cs/summation.do?appid=1&referer=zoneIndex`),
 		chromedp.Sleep(1*time.Second),
@@ -161,7 +161,7 @@ func (t *GroupSignInTask) groupSignIn() (err error) {
 					return err
 				}
 				if strings.Contains(outerHTML, "失败!系统检测多号刷签到!") {
-					err = fmt.Errorf("失败！系统检测多号刷签到！")
+					result = "失败！系统检测多号刷签到！"
 					xlog.Infof("GroupSignInTask(%v) sign with 失败!系统检测多号刷签到!", t.Username)
 				}
 			default:
@@ -174,9 +174,10 @@ func (t *GroupSignInTask) groupSignIn() (err error) {
 		chromedp.Sleep(1*time.Second),
 		chromedp.Navigate(`https://tx.com.cn/in/logout.do`),
 	)
-	if err == nil {
+	if err == nil && len(result) < 1 {
 		t.successTime = now
 		xlog.Infof("GroupSignInTask(%v) sign success", t.Username)
+		conf.Conf.UpdateUser(t.Username, "groupSignIN", time.Now().Format(`2006-01-02 15:04:05`))
 	}
 	return
 

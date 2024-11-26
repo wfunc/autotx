@@ -95,6 +95,7 @@ func (t *SignInTask) sign() (err error) {
 		xlog.Infof("SignInTask(%v) login failed with err %v", t.Username, err)
 		return
 	}
+	var result string
 	// sign
 	err = chromedp.Run(t.ctx,
 		chromedp.Sleep(1*time.Second),
@@ -233,7 +234,7 @@ func (t *SignInTask) sign() (err error) {
 					return err
 				}
 				if strings.Contains(outerHTML, "失败!系统检测多号刷签到!") {
-					err = fmt.Errorf("失败！系统检测多号刷签到！")
+					result = "失败！系统检测多号刷签到！"
 					xlog.Infof("SignInTask(%v) sign with 失败!系统检测多号刷签到!", t.Username)
 				}
 
@@ -252,9 +253,10 @@ func (t *SignInTask) sign() (err error) {
 		chromedp.Sleep(1*time.Second),
 		chromedp.Navigate(`https://tx.com.cn/in/logout.do`),
 	)
-	if err == nil {
+	if err == nil && len(result) < 1 {
 		t.successTime = now
 		xlog.Infof("SignInTask(%v) sign success", t.Username)
+		conf.Conf.UpdateUser(t.Username, "signIN", time.Now().Format(`2006-01-02 15:04:05`))
 	}
 	return
 }

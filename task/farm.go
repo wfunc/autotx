@@ -316,6 +316,9 @@ func (t *FarmTask) sowSeeds(setSeeds xmap.M) (err error) {
 			return nil
 		}),
 	)
+	if err == nil {
+		conf.Conf.UpdateUser(t.Username, "sowSeeds", time.Now().Format(`2006-01-02 15:04:05`))
+	}
 	return
 }
 

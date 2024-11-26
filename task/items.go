@@ -18,6 +18,7 @@ var (
 
 func BootstrapConfig() {
 	CodeURL = os.Getenv("CodeURL")
+	xlog.Infof("CodeURL: %v", CodeURL)
 }
 
 const (

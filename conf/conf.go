@@ -144,6 +144,15 @@ func (j *JSONFile) RemoveUser(username string) {
 	delete(j.Users, username)
 }
 
+func (j *JSONFile) UpdateUser(username, key, value string) {
+	j.Lock.Lock()
+	defer func() {
+		j.Lock.Unlock()
+		j.Save("user")
+	}()
+	j.Users[username][key] = value
+}
+
 func (j *JSONFile) GetSeeds() map[string]string {
 	j.Lock.RLock()
 	defer j.Lock.RUnlock()
