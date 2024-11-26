@@ -6,7 +6,7 @@ import (
 )
 
 func TestSignIn(t *testing.T) {
-	CodeURL = "https://ocr.rosetts.com/ocr?url="
+	CodeURL = ""
 
 	sn := NewSignInTask("37161619", "Aa112211")
 	sn.Headless = false

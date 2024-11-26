@@ -21,6 +21,7 @@ func NewExampleTask(name string) *ExampleTask {
 	base.ctx = ctx
 	base.Cancel = cancel
 	t := &ExampleTask{Name: name, BaseTask: base}
+	base.ParentTask = t
 	return t
 }
 

@@ -21,7 +21,7 @@ func (b *BaseTask) login() (err error) {
 		return
 	}
 	if strings.Contains(res, "继续访问空间") {
-		xlog.Infof("Login(%v) success", b.Username)
+		xlog.Infof("Login(%v) success", b.ParentTask.TaskName())
 		return nil
 	}
 	return

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/chromedp/chromedp"
+	"github.com/wfunc/autotx/conf"
 	"github.com/wfunc/go/xlog"
 	"github.com/wfunc/util/xmap"
 )
@@ -23,6 +24,7 @@ func NewSignInTask(username, password string) *SignInTask {
 	base := NewBaseTaskWithUserInfo(username, password)
 	base.Timeout = 2 * time.Minute
 	t := &SignInTask{Name: "sign-in", BaseTask: base}
+	base.ParentTask = t
 	return t
 }
 
@@ -67,21 +69,24 @@ func (t *SignInTask) clear() {
 }
 
 func (t *SignInTask) sign() (err error) {
-	signInLock.Lock()
-	defer signInLock.Unlock()
 	now := time.Now()
+	makeTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 6, 0, 0, now.Location())
 	if t.successTime.Year() == now.Year() && t.successTime.Month() == now.Month() && t.successTime.Day() == now.Day() {
 		if t.Verbose {
-			xlog.Infof("SignInTask(%v) sign skipped", t.Username)
+			xlog.Infof("SignInTask(%v) sign skipped and next will after on %v", t.Username, makeTime.AddDate(0, 0, 1).Sub(now))
+		}
+		if makeTime.AddDate(0, 0, 1).Sub(now) > time.Hour {
+			time.Sleep(300 * time.Second)
 		}
 		return
 	}
-	makeTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 6, 0, 0, now.Location())
 	// 如果now小于makeTime,直到makeTime到了再继续
 	if now.Before(makeTime) {
 		xlog.Infof("SignInTask(%v) sign will on %v start", t.Username, makeTime)
 		time.Sleep(makeTime.Sub(now))
 	}
+	signInLock.Lock()
+	defer signInLock.Unlock()
 	t.CreateChromedpContext(t.Timeout)
 	defer t.Cancel()
 	// login
@@ -103,27 +108,30 @@ func (t *SignInTask) sign() (err error) {
 		chromedp.Sleep(1*time.Second),
 
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			// defer func() {
-			// 	syndic := conf.Conf.LoadDo("syndic")
-			// 	if len(syndic) > 0 {
-			// 		friendIDs := strings.Split(syndic, ",")
-			// 		for _, friendID := range friendIDs {
-			// 			if t.Username == friendID {
-			// 				continue
-			// 			}
-			// 			err = chromedp.Navigate(fmt.Sprintf("https://tx.com.cn/show/syndic.do?score=1&friendId=%v", friendID)).Do(ctx)
-			// 			if err != nil {
-			// 				xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
-			// 				return
-			// 			}
-			// 			err = chromedp.Sleep(1 * time.Second).Do(ctx)
-			// 			if err != nil {
-			// 				xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
-			// 				return
-			// 			}
-			// 		}
-			// 	}
-			// }()
+			defer func() {
+				syndic := conf.Conf.LoadDo("syndic")
+				if len(syndic) > 0 {
+					friendIDs := strings.Split(syndic, ",")
+					for _, friendID := range friendIDs {
+						if t.Username == friendID {
+							continue
+						}
+						err = chromedp.Navigate(fmt.Sprintf("https://tx.com.cn/show/syndic.do?score=1&friendId=%v", friendID)).Do(ctx)
+						if err != nil {
+							xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
+							return
+						}
+						if t.Verbose {
+							xlog.Infof("SignInTask(%v) syndic success with %v", t.Username, friendID)
+						}
+						err = chromedp.Sleep(1 * time.Second).Do(ctx)
+						if err != nil {
+							xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
+							return
+						}
+					}
+				}
+			}()
 
 			if t.Verbose {
 				xlog.Infof("SignInTask(%v) sign start--->1", t.Username)

@@ -40,6 +40,7 @@ func NewFarmTask(target Target, username, password string) *FarmTask {
 	}
 	base.Timeout = 10 * time.Minute
 	t := &FarmTask{Name: "farm-" + string(target), BaseTask: base, target: target}
+	base.ParentTask = t
 	return t
 }
 

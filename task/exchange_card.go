@@ -22,6 +22,7 @@ func NewExchangeCardTask(username, password string) *ExchangeCardTask {
 	base := NewBaseTaskWithUserInfo(username, password)
 	base.Timeout = 120 * time.Minute
 	t := &ExchangeCardTask{Name: "exchange-card", BaseTask: base}
+	base.ParentTask = t
 	return t
 }
 
