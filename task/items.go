@@ -182,7 +182,7 @@ func (t *BaseTask) clickNext(ctx context.Context, selector string) bool {
 
 func XOuterHTML(ctx context.Context, outerHTML *string, selectors ...string) (err error) {
 	for i := 0; i < 3; i++ {
-		selector := `body > div.mainareaOutside_pc > div.mainareaCenter_pc`
+		selector := `body`
 		if len(selectors) > 0 {
 			selector = selectors[0]
 		}
