@@ -38,7 +38,7 @@ func mobileSubmit(urlstr, sel, q, sel2, q2 string, res *string) chromedp.Tasks {
 		chromedp.Submit(sel),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			time.Sleep(1 * time.Second)
-			err := chromedp.OuterHTML(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > div.tip3`, res).Do(ctx)
+			err := chromedp.OuterHTML(`body`, res).Do(ctx)
 			if err != nil {
 				xlog.Infof("mobileSubmit(%s) failed with err %v", q, err)
 				return err
