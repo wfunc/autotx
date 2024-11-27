@@ -10,6 +10,10 @@ import (
 	"github.com/wfunc/util/xmap"
 )
 
+var (
+	IphoneUserAgent = `Mozilla/5.0 (iPhone; CPU iPhone OS 18_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1.1 Mobile/15E148 Safari/604.1`
+)
+
 // BaseTask 包含公共的任务配置和行为
 type BaseTask struct {
 	Username    string
@@ -90,6 +94,7 @@ func (b *BaseTask) CreateChromedpContext(timeout time.Duration) {
 		chromedp.UserAgent(b.UserAgent),         // 设置用户代理
 	)
 	if len(b.Proxy) > 0 {
+		xlog.Infof("BaseTask(%v) use proxy %v", b.Username, b.Proxy)
 		opts = append(opts, chromedp.ProxyServer(b.Proxy), chromedp.Flag("proxy-bypass-list", "<-loopback>"))
 	}
 	if b.Headless {
