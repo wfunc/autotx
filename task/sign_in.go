@@ -18,6 +18,7 @@ type SignInTask struct {
 	Name        string
 	DoneAfter   time.Duration
 	successTime time.Time
+	failed      int
 }
 
 func NewSignInTask(username, password string) *SignInTask {
@@ -29,7 +30,22 @@ func NewSignInTask(username, password string) *SignInTask {
 }
 
 func (t *SignInTask) Run() {
-	t.clear()
+	t.UserAgent = IphoneUserAgent
+	user := conf.Conf.GetUser(t.Username)
+	signIN := user.Str("signIN")
+	if len(signIN) > 0 {
+		layout := "2006-01-02 15:04:05"
+
+		// 使用 time.Parse 将字符串解析为 time.Time
+		parsedTime, err := time.ParseInLocation(layout, signIN, time.Local)
+		if err == nil {
+			t.successTime = parsedTime
+			xlog.Infof("SignInTask(%v) signIN time is %v", t.Username, parsedTime)
+		}
+	} else {
+		t.clear()
+	}
+
 	xlog.Infof("SignInTask(%v) started", t.Username)
 
 	t.sign()
@@ -41,7 +57,12 @@ func (t *SignInTask) Run() {
 		case <-t.exiter:
 			running = false
 		case <-ticker.C:
-			t.sign()
+			result, _ := t.sign()
+			if len(result) > 0 {
+				t.failed++
+				xlog.Infof("SignInTask(%v) sign failed(%v) with %v will sleep on %v", t.Username, t.failed, result, t.Timeout)
+				time.Sleep(t.Timeout)
+			}
 		}
 	}
 	if t.Cancel != nil {
@@ -66,9 +87,10 @@ func (t *SignInTask) TaskName() string {
 
 func (t *SignInTask) clear() {
 	t.successTime = time.Time{}
+	t.failed = 0
 }
 
-func (t *SignInTask) sign() (err error) {
+func (t *SignInTask) sign() (result string, err error) {
 	now := time.Now()
 	makeTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 6, 0, 0, now.Location())
 	if t.successTime.Year() == now.Year() && t.successTime.Month() == now.Month() && t.successTime.Day() == now.Day() {
@@ -89,13 +111,20 @@ func (t *SignInTask) sign() (err error) {
 	defer signInLock.Unlock()
 	t.CreateChromedpContext(t.Timeout)
 	defer t.Cancel()
+
+	// if len(t.Proxy) > 0 {
+	// 	err = chromedp.Run(t.ctx, chromedp.Navigate(`https://ip.cn`), chromedp.Sleep(5*time.Second))
+	// 	if err != nil {
+	// 		xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
+	// 		return
+	// 	}
+	// }
 	// login
 	err = t.login()
 	if err != nil {
 		xlog.Infof("SignInTask(%v) login failed with err %v", t.Username, err)
 		return
 	}
-	var result string
 	// sign
 	err = chromedp.Run(t.ctx,
 		chromedp.Sleep(1*time.Second),
@@ -168,8 +197,9 @@ func (t *SignInTask) sign() (err error) {
 				if t.Verbose {
 					xlog.Infof("SignInTask(%v) sign start--->4", t.Username)
 				}
-				err = chromedp.Evaluate(`document.querySelector("body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > img").src`, &str).Do(ctx)
+				err = chromedp.Evaluate(`document.querySelector("body > form > img").src`, &str).Do(ctx)
 				if err != nil {
+					time.Sleep(300 * time.Second)
 					xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 					return err
 				}
@@ -186,7 +216,7 @@ func (t *SignInTask) sign() (err error) {
 				if t.Verbose {
 					xlog.Infof("SignInTask(%v) sign start---> url %v code %v", t.Username, str, authnum)
 				}
-				err = chromedp.WaitVisible(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > input[type=text]:nth-child(5)`).Do(ctx)
+				err = chromedp.WaitVisible(`body > form > input[type=text]:nth-child(5)`).Do(ctx)
 				if err != nil {
 					xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 					return err
@@ -194,7 +224,7 @@ func (t *SignInTask) sign() (err error) {
 				if t.Verbose {
 					xlog.Infof("SignInTask(%v) sign start--->7", t.Username)
 				}
-				err = chromedp.SendKeys(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > input[type=text]:nth-child(5)`, authnum).Do(ctx)
+				err = chromedp.SendKeys(`body > form > input[type=text]:nth-child(5)`, authnum).Do(ctx)
 				if err != nil {
 					xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 					return err
@@ -239,7 +269,8 @@ func (t *SignInTask) sign() (err error) {
 				}
 
 			default:
-				err := chromedp.Submit(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > form > input[type=submit]:nth-child(8)`, chromedp.NodeVisible).Do(ctx)
+				err = chromedp.EvaluateAsDevTools(`document.querySelector("input[type=submit][value='确定']").click()`, nil).Do(ctx)
+				// err := chromedp.Submit(`body > form > input[type=submit]:nth-child(8)`, chromedp.NodeVisible).Do(ctx)
 				if err != nil {
 					xlog.Infof("SignInTask(%v) sign failed with err %v", t.Username, err)
 					return err
@@ -254,9 +285,11 @@ func (t *SignInTask) sign() (err error) {
 		chromedp.Navigate(`https://tx.com.cn/in/logout.do`),
 	)
 	if err == nil && len(result) < 1 {
+		t.failed = 0
 		t.successTime = now
 		xlog.Infof("SignInTask(%v) sign success", t.Username)
 		conf.Conf.UpdateUser(t.Username, "signIN", time.Now().Format(`2006-01-02 15:04:05`))
+		return
 	}
 	return
 }
