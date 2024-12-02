@@ -266,6 +266,9 @@ func (t *SignInTask) sign() (result string, err error) {
 				if strings.Contains(outerHTML, "失败!系统检测多号刷签到!") {
 					result = "失败！系统检测多号刷签到！"
 					xlog.Infof("SignInTask(%v) sign with 失败!系统检测多号刷签到!", t.Username)
+				} else if !strings.Contains(outerHTML, "签到成功,去记录一下") {
+					result = outerHTML
+					xlog.Infof("SignInTask(%v) sign with %v", t.Username, outerHTML)
 				}
 
 			default:
