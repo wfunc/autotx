@@ -208,12 +208,14 @@ func (t *FarmTask) farm() (err error) {
 	}
 	userConf := conf.Conf.GetUser(t.Username)
 	setSeeds := userConf.Map("set_seeds")
-	// check user set seeds
-	if setSeeds.Length() < 1 {
-		if t.Verbose {
-			xlog.Infof("FarmTask(%v) set_seeds is empty", t.Username)
+	if t.target == TargetSowSeeds {
+		// check user set seeds
+		if setSeeds.Length() < 1 {
+			if t.Verbose {
+				xlog.Infof("FarmTask(%v) set_seeds is empty", t.Username)
+			}
+			return
 		}
-		return
 	}
 	t.CreateChromedpContext(t.Timeout)
 	defer t.Cancel()

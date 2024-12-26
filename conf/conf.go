@@ -145,6 +145,9 @@ func (j *JSONFile) RemoveUser(username string) {
 }
 
 func (j *JSONFile) UpdateUser(username, key, value string) {
+	if j == nil || j.Users == nil {
+		return
+	}
 	j.Lock.Lock()
 	defer func() {
 		j.Lock.Unlock()
