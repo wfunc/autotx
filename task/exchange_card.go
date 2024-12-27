@@ -69,6 +69,9 @@ func (t *ExchangeCardTask) exchange() (err error) {
 		}
 		return
 	}
+	lock := ChromeManagerInstance.GetUserLock(t.Username)
+	lock.Lock()
+	defer lock.Unlock()
 	t.CreateChromedpContext(t.Timeout)
 	defer t.Cancel()
 	// login

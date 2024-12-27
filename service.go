@@ -53,6 +53,8 @@ func main() {
 	r.GET("/favicon.ico", func(c *gin.Context) {
 		c.String(http.StatusNotFound, "")
 	})
+	task.BootstrapChromeManagerInstance()
+
 	task.BootstrapConfig()
 	// conf
 	conf.Bootstrap()

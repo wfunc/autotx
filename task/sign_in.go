@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/chromedp/chromedp"
@@ -107,8 +106,9 @@ func (t *SignInTask) sign() (result string, err error) {
 		xlog.Infof("SignInTask(%v) sign will on %v start", t.Username, makeTime)
 		time.Sleep(makeTime.Sub(now))
 	}
-	signInLock.Lock()
-	defer signInLock.Unlock()
+	lock := ChromeManagerInstance.GetUserLock(t.Username)
+	lock.Lock()
+	defer lock.Unlock()
 	t.CreateChromedpContext(t.Timeout)
 	defer t.Cancel()
 
@@ -296,6 +296,3 @@ func (t *SignInTask) sign() (result string, err error) {
 	}
 	return
 }
-
-// 串行签到
-var signInLock = sync.Mutex{}
