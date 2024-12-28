@@ -46,18 +46,34 @@ func mobileSubmit(urlstr, sel, q, sel2, q2 string, res *string) chromedp.Tasks {
 			if strings.Contains(*res, "继续访问空间") {
 				return nil
 			}
-			err = chromedp.Evaluate(`document.querySelector('body > div.mainareaOutside_pc > div.mainareaCenter_pc > div:nth-child(2) > div > form:nth-child(1) > img').src`, res).Do(ctx)
+			err = chromedp.Evaluate(`document.querySelector('body > div:nth-child(2) > div > form:nth-child(1) > img').src`, res).Do(ctx)
 			if err != nil {
 				return err
 			}
 			authnum := getCode(*res)
-			err = chromedp.SendKeys(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > div:nth-child(2) > div > form:nth-child(1) > input[type=text]:nth-child(13)`, authnum).Do(ctx)
+			err = chromedp.SendKeys(`body > div:nth-child(2) > div > form:nth-child(1) > input[type=text]:nth-child(13)`, authnum).Do(ctx)
 			if err != nil {
 				return err
 			}
-			ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-			defer cancel()
-			err = chromedp.Submit(`body > div.mainareaOutside_pc > div.mainareaCenter_pc > div:nth-child(2) > div > form:nth-child(1) > input[type=submit]:nth-child(17)`).Do(ctx)
+			// ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			// defer cancel()
+
+			// err = chromedp.WaitVisible(`body > div:nth-child(2) > div > form:nth-child(1) > input[type=submit]:nth-child(17)`, chromedp.ByQuery).Do(ctx)
+			// if err != nil {
+			// 	xlog.Errorf("Failed to wait for submit button: %v", err)
+			// 	return err
+			// }
+			// err = chromedp.Submit(`body > div:nth-child(2) > div > form:nth-child(1) > input[type=submit]:nth-child(17)`).Do(ctx)
+			// xlog.Infof("mobileSubmit(%s) authnum is %s err %v", q, authnum, err)
+			err = chromedp.OuterHTML(`body`, res).Do(ctx)
+			if err != nil {
+				xlog.Infof("mobileSubmit(%s) failed with err %v", q, err)
+				return err
+			}
+
+			if strings.Contains(*res, "继续访问空间") {
+				return nil
+			}
 			return err
 		}),
 	}
