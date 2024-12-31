@@ -47,7 +47,7 @@ func (t *SignInTask) Run() {
 
 	xlog.Infof("SignInTask(%v) started", t.Username)
 
-	t.sign()
+	t.signIN()
 	ticker := time.NewTicker(t.TickerDelay)
 	defer ticker.Stop()
 	running := true
@@ -56,7 +56,7 @@ func (t *SignInTask) Run() {
 		case <-t.exiter:
 			running = false
 		case <-ticker.C:
-			result, _ := t.sign()
+			result, _ := t.signIN()
 			if len(result) > 0 {
 				t.failed++
 				xlog.Infof("SignInTask(%v) sign failed(%v) with %v will sleep on %v", t.Username, t.failed, result, t.Timeout)
@@ -89,7 +89,7 @@ func (t *SignInTask) clear() {
 	t.failed = 0
 }
 
-func (t *SignInTask) sign() (result string, err error) {
+func (t *SignInTask) signIN() (result string, err error) {
 	now := time.Now()
 	makeTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 6, 0, 0, now.Location())
 	if t.successTime.Year() == now.Year() && t.successTime.Month() == now.Month() && t.successTime.Day() == now.Day() {
