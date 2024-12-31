@@ -129,32 +129,32 @@ func (r *Runner) Stop() int {
 	return all
 }
 
+// StartTask start task with default mode
 func (r *Runner) StartTask(username, password string) {
-	if os.Getenv("MODE") == "sign" {
+	mode := os.Getenv("MODE")
+	verbose := os.Getenv("Verbose") == "1"
+	if strings.Contains(mode, "sign") || mode == "" {
 		// sign
 		signTask := task.NewSignInTask(username, password)
-		signTask.Verbose = os.Getenv("Verbose") == "1"
+		signTask.Verbose = verbose
 		r.AddTask(signTask)
-		return
 	}
-	// sign
-	signTask := task.NewSignInTask(username, password)
-	signTask.Verbose = os.Getenv("Verbose") == "1"
-	r.AddTask(signTask)
-
-	// exchange card
-	exchangeCardTask := task.NewExchangeCardTask(username, password)
-	exchangeCardTask.Verbose = os.Getenv("Verbose") == "1"
-	r.AddTask(exchangeCardTask)
-
-	// sow seeds
-	sowSeeds := task.NewFarmTask(task.TargetSowSeeds, username, password)
-	sowSeeds.Verbose = os.Getenv("Verbose") == "1"
-	r.AddTask(sowSeeds)
-
-	// farm water
-	water := task.NewFarmTask(task.TargetWater, username, password)
-	water.Verbose = os.Getenv("Verbose") == "1"
-	r.AddTask(water)
-
+	if strings.Contains(mode, "exchange") || mode == "" {
+		// exchange card
+		exchangeCardTask := task.NewExchangeCardTask(username, password)
+		exchangeCardTask.Verbose = verbose
+		r.AddTask(exchangeCardTask)
+	}
+	if strings.Contains(mode, "sow") || mode == "" {
+		// sow seeds
+		sowSeeds := task.NewFarmTask(task.TargetSowSeeds, username, password)
+		sowSeeds.Verbose = verbose
+		r.AddTask(sowSeeds)
+	}
+	if strings.Contains(mode, "water") || mode == "" {
+		// farm water
+		water := task.NewFarmTask(task.TargetWater, username, password)
+		water.Verbose = verbose
+		r.AddTask(water)
+	}
 }

@@ -29,7 +29,7 @@ func NewExchangeCardTask(username, password string) *ExchangeCardTask {
 
 func (t *ExchangeCardTask) Run() {
 	xlog.Infof("ExchangeCardTask(%v) started", t.Username)
-	t.exchange()
+	t.exchangeCard()
 	ticker := time.NewTicker(t.TickerDelay)
 	defer ticker.Stop()
 	running := true
@@ -38,7 +38,7 @@ func (t *ExchangeCardTask) Run() {
 		case <-t.exiter:
 			running = false
 		case <-ticker.C:
-			t.exchange()
+			t.exchangeCard()
 		}
 	}
 	if t.Cancel != nil {
@@ -61,11 +61,11 @@ func (t *ExchangeCardTask) TaskName() string {
 	return t.Username + "->" + t.Name
 }
 
-func (t *ExchangeCardTask) exchange() (err error) {
+func (t *ExchangeCardTask) exchangeCard() (err error) {
 	now := time.Now()
 	if t.successTime.Year() == now.Year() && t.successTime.Month() == now.Month() && t.successTime.Day() == now.Day() {
 		if t.Verbose {
-			xlog.Infof("SignInTask(%v) sign skipped", t.Username)
+			xlog.Infof("ExchangeCardTask(%v) skipped", t.Username)
 		}
 		return
 	}
@@ -145,7 +145,8 @@ func (t *ExchangeCardTask) exchange() (err error) {
 	)
 	if err == nil {
 		t.successTime = time.Now()
-		conf.Conf.UpdateUser(t.Username, "exchangeCard", time.Now().Format(`2006-01-02 15:04:05`))
+		conf.Conf.UpdateUser(t.Username, "exchangeCard", t.successTime.Format(`2006-01-02 15:04:05`))
+		xlog.Infof("ExchangeCardTask(%v) success with %v", t.Username, t.successTime)
 	}
 	return
 }

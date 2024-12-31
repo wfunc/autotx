@@ -94,7 +94,7 @@ func (t *SignInTask) signIN() (result string, err error) {
 	makeTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 6, 0, 0, now.Location())
 	if t.successTime.Year() == now.Year() && t.successTime.Month() == now.Month() && t.successTime.Day() == now.Day() {
 		if t.Verbose {
-			xlog.Infof("SignInTask(%v) sign skipped and next will after on %v", t.Username, makeTime.AddDate(0, 0, 1).Sub(now))
+			xlog.Infof("SignInTask(%v) skipped and next will after on %v", t.Username, makeTime.AddDate(0, 0, 1).Sub(now))
 		}
 		if makeTime.AddDate(0, 0, 1).Sub(now) > time.Hour {
 			time.Sleep(300 * time.Second)
