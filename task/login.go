@@ -89,7 +89,11 @@ func getCode(url string) string {
 
 func getCodeLogic(url string) string {
 	if CodeAPI {
-		data, _ := xhttp.GetText(CodeURL+"%v", url)
+		apiURL := CodeURL + url
+		data, _ := xhttp.GetText("%s", apiURL)
+		if len(data) < 1 {
+			xlog.Infof("getCodeLogic(%s) failed with err %v", apiURL, data)
+		}
 		return data
 	} else {
 		// old code will be removed in the future

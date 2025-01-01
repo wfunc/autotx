@@ -6,11 +6,12 @@ import (
 )
 
 func TestSignIn(t *testing.T) {
-	CodeURL = ""
+	CodeURL = "https://hk51.cloudstoreapp.online/ocr?url="
 
-	sn := NewSignInTask("37161619", "Aa112211")
+	sn := NewSignInTask("60541821", "238562")
 	sn.Headless = false
 	sn.Verbose = true
+	sn.Proxy = "http://127.0.0.1:2108"
 
 	wg := sync.WaitGroup{}
 	for i := 0; i < 1; i++ {

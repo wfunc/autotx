@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/wfunc/go/xlog"
 	"github.com/wfunc/util/xmap"
@@ -154,6 +155,34 @@ func (j *JSONFile) UpdateUser(username, key, value string) {
 		j.Save("user")
 	}()
 	j.Users[username][key] = value
+}
+
+func (j *JSONFile) IsAllSignIN() bool {
+	j.Lock.RLock()
+	defer j.Lock.RUnlock()
+	isAllSignIN := true
+	now := time.Now()
+	layout := "2006-01-02 15:04:05"
+	for _, user := range j.Users {
+		signIN := user.Str("signIN")
+		if len(signIN) > 0 {
+			// 使用 time.Parse 将字符串解析为 time.Time
+			parsedTime, err := time.ParseInLocation(layout, signIN, time.Local)
+			if err == nil {
+				if !(parsedTime.Year() == now.Year() && parsedTime.Month() == now.Month() && parsedTime.Day() == now.Day()) {
+					isAllSignIN = false
+					break
+				}
+			} else {
+				isAllSignIN = false
+				break
+			}
+		} else {
+			isAllSignIN = false
+			break
+		}
+	}
+	return isAllSignIN
 }
 
 func (j *JSONFile) GetSeeds() map[string]string {

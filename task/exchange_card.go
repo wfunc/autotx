@@ -69,6 +69,11 @@ func (t *ExchangeCardTask) exchangeCard() (err error) {
 		}
 		return
 	}
+	if !conf.Conf.IsAllSignIN() {
+		xlog.Infof("ExchangeCardTask(%v) All not sign in will check next 1 minute", t.Username)
+		time.Sleep(1 * time.Minute)
+		return
+	}
 	lock := ChromeManagerInstance.GetUserLock(t.Username)
 	lock.Lock()
 	defer lock.Unlock()
